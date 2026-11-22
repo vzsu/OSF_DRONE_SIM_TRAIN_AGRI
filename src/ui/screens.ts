@@ -3,6 +3,9 @@ import { DRONES, droneById } from '../data/drones';
 import { ENV_PRESETS, CRASH_CAUSE, MODES } from '../sim/wasm';
 import { HDRIS } from '../render/environment';
 import { PLACES } from '../data/world';
+import { CROPS, GRASSES } from '../data/crops';
+import { KEY_ACTIONS, keyOf, keyLabel, bindKey, resetKeys } from '../input/keys';
+import { setCaptureKey } from '../input/input';
 import { currentUser, offline } from '../auth/client';
 import { settings, saveSettings, profileFor, defaultProfile, exportJson, downloadBlob, STICK_FUNCS, SWITCH_FUNCS, type Func, type Src, type ControllerProfile } from '../settings';
 import { listPads, activePad, KEYBOARD_ID, normStick, normThrottle, readSrc, readSticks, type RawPad, type Sticks } from '../input/input';
@@ -121,6 +124,13 @@ export function envScreen(nav: Nav) {
       <div class="card ${pl.id === 'custom' ? 'sel' : ''}"><b>Generate new place</b><div class="small muted">${pl.id === 'custom' ? `Current: ${pl.category} #${pl.seed}` : 'Random layout'}</div>
         <div class="row" style="margin-top:6px"><button class="small" data-gen="agri">New farm</button><button class="small" data-gen="wedding">New wedding venue</button></div></div></div>
     <label class="small"><input type="checkbox" id="ha" ${settings.env.holdAssist !== false ? 'checked' : ''}> <b>Hold assist</b> — ALT HOLD / ATTI brakes and holds position when sticks are centred (beginner). Switch off to practise real ATTI wind drift.</label>
+    <div class="grid" style="margin-top:10px">
+      <div class="card"><div class="field"><label>Crop in the field (radar holds spray height above the canopy)</label><select id="crop">${CROPS.map((c) => `<option value="${c.id}" ${settings.env.crop === c.id ? 'selected' : ''}>${c.name} — ${c.height} m</option>`).join('')}</select></div>
+        <p class="small muted" id="cropnote">${esc(CROPS.find((c) => c.id === settings.env.crop)?.note ?? '')}</p></div>
+      <div class="card"><div class="field"><label>Grass / ground cover</label><select id="grass">${GRASSES.map((g) => `<option value="${g.id}" ${settings.env.grass === g.id ? 'selected' : ''}>${g.name}</option>`).join('')}</select></div></div>
+      <div class="card"><div class="field"><label>Battery charger: full charge in <span class="val" id="chv">${settings.chargeMinutes ?? 6}</span> min</label><input type="range" id="chg" min="2" max="60" step="1" value="${settings.chargeMinutes ?? 6}"></div>
+        <p class="small muted">Real agri chargers take 30–60 min. Lower it to keep training sessions moving. 3 packs: one in the drone, two to rotate.</p></div>
+    </div>
     <h3 style="margin-top:14px">360° scene (real HDRI scans, CC0 from Poly Haven)</h3>
     <div class="grid" style="margin-bottom:16px">${HDRIS.map((h) => envCard(h.id, h.name, h.note)).join('')}${envCard('procedural', 'Simple sky (fastest)', 'Procedural sky; uses the time-of-day slider. Best for very weak PCs.')}</div>
     <h3>Weather presets</h3>
@@ -137,17 +147,20 @@ export function envScreen(nav: Nav) {
   root.querySelectorAll<HTMLInputElement>('input[data-k]').forEach((i) => i.addEventListener('input', () => { (settings.env as any)[i.dataset.k!] = +i.value; saveSettings(); show(); }));
   root.querySelectorAll<HTMLElement>('[data-place]').forEach((c) => c.addEventListener('click', () => { const p = PLACES.find((x) => x.id === c.dataset.place)!; settings.place = { id: p.id, category: p.category, seed: p.seed }; saveSettings(); envScreen(nav); }));
   root.querySelectorAll<HTMLElement>('[data-gen]').forEach((b) => b.addEventListener('click', (ev) => { ev.stopPropagation(); settings.place = { id: 'custom', category: b.dataset.gen as 'agri' | 'wedding', seed: 1000 + Math.floor(Math.random() * 900000) }; saveSettings(); envScreen(nav); }));
+  root.querySelector<HTMLSelectElement>('#crop')!.addEventListener('change', (e) => { settings.env.crop = (e.target as HTMLSelectElement).value; saveSettings(); envScreen(nav); });
+  root.querySelector<HTMLSelectElement>('#grass')!.addEventListener('change', (e) => { settings.env.grass = (e.target as HTMLSelectElement).value; saveSettings(); });
+  root.querySelector<HTMLInputElement>('#chg')!.addEventListener('input', (e) => { settings.chargeMinutes = +(e.target as HTMLInputElement).value; root.querySelector('#chv')!.textContent = String(settings.chargeMinutes); saveSettings(); });
   root.querySelector<HTMLInputElement>('#ha')!.addEventListener('change', (e) => { settings.env.holdAssist = (e.target as HTMLInputElement).checked; saveSettings(); });
   root.querySelectorAll<HTMLElement>('[data-hdri]').forEach((c) => c.addEventListener('click', () => { settings.env.hdri = c.dataset.hdri!; saveSettings(); envScreen(nav); }));
   root.querySelectorAll<HTMLElement>('[data-p]').forEach((b) => b.addEventListener('click', () => {
-    Object.assign(settings.env, ENV_PRESETS[b.dataset.p!], { hdri: settings.env.hdri, timeOfDay: settings.env.timeOfDay, holdAssist: settings.env.holdAssist }); saveSettings(); envScreen(nav);
+    Object.assign(settings.env, ENV_PRESETS[b.dataset.p!], { hdri: settings.env.hdri, timeOfDay: settings.env.timeOfDay, holdAssist: settings.env.holdAssist, crop: settings.env.crop, grass: settings.env.grass }); saveSettings(); envScreen(nav);
   }));
 }
 
 // ---------------- SETTINGS ----------------
 let settingsTab = 'controller';
 export function settingsScreen(nav: Nav) {
-  const tabs = [['controller', 'Controller'], ['camera', 'Camera & view'], ['latency', 'Latency'], ['display', 'Display & aids']];
+  const tabs = [['controller', 'Controller (RC)'], ['keys', 'Keyboard shortcuts'], ['camera', 'Camera & view'], ['latency', 'Latency'], ['display', 'Display, sound & aids']];
   const root = mount(`${header('Settings')}
     <div class="tabs">${tabs.map(([k, l]) => `<button data-tab="${k}" class="${k === settingsTab ? 'on' : ''}">${l}</button>`).join('')}</div>
     <div id="tab"></div>`);
@@ -155,6 +168,7 @@ export function settingsScreen(nav: Nav) {
   root.querySelectorAll<HTMLElement>('[data-tab]').forEach((b) => b.addEventListener('click', () => { settingsTab = b.dataset.tab!; settingsScreen(nav); }));
   const tab = root.querySelector<HTMLElement>('#tab')!;
   if (settingsTab === 'controller') controllerTab(tab, nav);
+  else if (settingsTab === 'keys') keysTab(tab, nav);
   else if (settingsTab === 'camera') cameraTab(tab);
   else if (settingsTab === 'latency') latencyTab(tab);
   else displayTab(tab);
@@ -166,6 +180,18 @@ function slider(id: string, label: string, v: number, min: number, max: number, 
 function bindSlider(root: HTMLElement, id: string, set: (v: number) => void, fmt: (v: number) => string = String) {
   const el = root.querySelector<HTMLInputElement>('#' + id)!;
   el.addEventListener('input', () => { set(+el.value); root.querySelector('#' + id + '-v')!.textContent = fmt(+el.value); saveSettings(); });
+}
+
+function keysTab(t: HTMLElement, nav: Nav) {
+  const groups = ['Flight', 'Switches', 'App'] as const;
+  t.innerHTML = `<div class="card"><p class="small muted">Click a key, then press the new key. A key already used elsewhere is swapped. RC buttons and switches are mapped in the Controller (RC) tab.</p>
+    <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr))">${groups.map((g) => `<div><h3>${g}</h3><table>${KEY_ACTIONS.filter((a) => a.group === g).map((a) => `<tr><td>${a.label}</td><td><button class="keybtn small" data-act="${a.id}">${keyLabel(keyOf(a.id))}</button></td></tr>`).join('')}</table></div>`).join('')}</div>
+    <button id="kreset" style="margin-top:10px">Reset to defaults</button></div>`;
+  t.querySelectorAll<HTMLButtonElement>('[data-act]').forEach((b) => (b.onclick = () => {
+    b.textContent = 'Press a key…'; b.classList.add('wait');
+    setCaptureKey((code) => { if (code !== 'Escape' || b.dataset.act === 'pause') bindKey(b.dataset.act!, code); settingsScreen(nav); });
+  }));
+  t.querySelector<HTMLButtonElement>('#kreset')!.onclick = () => { resetKeys(); settingsScreen(nav); };
 }
 
 function cameraTab(t: HTMLElement) {
@@ -198,7 +224,8 @@ function displayTab(t: HTMLElement) {
     <div class="field"><label>Units</label><select id="units"><option value="metric" ${d.units === 'metric' ? 'selected' : ''}>Metric</option><option value="imperial" ${d.units === 'imperial' ? 'selected' : ''}>Imperial</option></select></div>
     <div class="field"><label>Graphics quality</label><select id="q"><option value="high" ${d.quality === 'high' ? 'selected' : ''}>High (shadows)</option><option value="low" ${d.quality === 'low' ? 'selected' : ''}>Low (weak laptops)</option></select></div>
     <p class="small muted">Changing graphics quality takes effect after a page reload.</p>
-    <h3 style="margin-top:12px">Sound</h3><label><input type="checkbox" id="snd" ${settings.audio.on ? 'checked' : ''}> Drone sound (rotors, motors, wind, pump, alerts)</label>
+    <h3 style="margin-top:12px">Sound</h3><label><input type="checkbox" id="snd" ${settings.audio.on ? 'checked' : ''}> Drone sound (rotors, motors, wind, pump, alerts)</label><br>
+    <label><input type="checkbox" id="vce" ${settings.audio.voice !== false ? 'checked' : ''}> Voice prompts (GPS ready, returning home, battery low…)</label>
     ${slider('vol', 'Volume', settings.audio.volume, 0, 1, 0.05, (v) => Math.round(v * 100) + '%')}</div>
     <div class="card"><h3>Training aids (switch off for checkrides)</h3>
     <label><input type="checkbox" id="oa" ${d.orientArrow ? 'checked' : ''}> Orientation arrow above the drone</label><br>
@@ -206,7 +233,7 @@ function displayTab(t: HTMLElement) {
     <label><input type="checkbox" id="ss" ${d.showSticks ? 'checked' : ''}> Show stick positions on the HUD</label><br>
     <label><input type="checkbox" id="tr" ${d.trail !== false ? 'checked' : ''}> Flight trail (3D path + map; blue = oldest, yellow = newest)</label></div></div>`;
   const ch = (id: string, f: (v: boolean) => void) => t.querySelector<HTMLInputElement>('#' + id)!.addEventListener('change', (e) => { f((e.target as HTMLInputElement).checked); saveSettings(); });
-  ch('snd', (v) => (settings.audio.on = v)); bindSlider(t, 'vol', (v) => (settings.audio.volume = v), (v) => Math.round(v * 100) + '%');
+  ch('snd', (v) => (settings.audio.on = v)); ch('vce', (v) => (settings.audio.voice = v)); bindSlider(t, 'vol', (v) => (settings.audio.volume = v), (v) => Math.round(v * 100) + '%');
   ch('oa', (v) => (d.orientArrow = v)); ch('gm', (v) => (d.groundMarker = v)); ch('ss', (v) => (d.showSticks = v)); ch('tr', (v) => (d.trail = v));
   t.querySelector<HTMLSelectElement>('#units')!.addEventListener('change', (e) => { d.units = (e.target as HTMLSelectElement).value as any; saveSettings(); });
   t.querySelector<HTMLSelectElement>('#q')!.addEventListener('change', (e) => { d.quality = (e.target as HTMLSelectElement).value as any; saveSettings(); });

@@ -1,6 +1,7 @@
 // Input layer: RC transmitter via Gamepad API (Radiomaster Pocket in USB Joystick mode),
 // keyboard fallback, and a virtual pad hook (window.__virtualPad) for automated tests.
 import { settings, profileFor, type ControllerProfile, type Src } from '../settings';
+import { actionsFor, keyOf } from './keys';
 
 export interface RawPad { id: string; axes: number[]; buttons: boolean[]; timestamp: number }
 export interface Sticks {
@@ -35,39 +36,48 @@ export function activePad(): RawPad | null {
 // ---------- keyboard ----------
 const keys = new Set<string>();
 const kb = { arm: 0, modePos: 2, spray: false, rtl: false, view: 0, kill: false, flow: 1 };
-let kbHandlers: ((code: string) => void)[] = [];
-export function onKey(fn: (code: string) => void) { kbHandlers.push(fn); }
+let kbHandlers: ((action: string) => void)[] = [];
+/** Subscribe to keyboard ACTIONS (see keys.ts — the user can rebind every key). */
+export function onKey(fn: (action: string) => void) { kbHandlers.push(fn); }
+/** While set, the next key press goes here instead (key-binding editor). */
+export let captureKey: ((code: string) => void) | null = null;
+export function setCaptureKey(f: ((code: string) => void) | null) { captureKey = f; }
 window.addEventListener('keydown', (e) => {
-  if ((e.target as HTMLElement)?.tagName === 'INPUT') return;
+  const tag = (e.target as HTMLElement)?.tagName;
+  if (captureKey) { e.preventDefault(); const f = captureKey; captureKey = null; f(e.code); return; }
+  if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+  const acts = actionsFor(e.code);
   if (!keys.has(e.code)) {
-    if (e.code === 'Enter') kb.arm = kb.arm ? 0 : 1;
-    if (e.code === 'Digit1') kb.modePos = 0;
-    if (e.code === 'Digit2') kb.modePos = 1;
-    if (e.code === 'Digit3') kb.modePos = 2;
-    if (e.code === 'Digit4') kb.modePos = 3; // AUTO (mission)
-    if (e.code === 'KeyR') kb.rtl = !kb.rtl;
-    if (e.code === 'KeyK') kb.kill = !kb.kill;
-    if (e.code === 'BracketLeft') kb.flow = Math.max(0, +(kb.flow - 0.1).toFixed(1));
-    if (e.code === 'BracketRight') kb.flow = Math.min(1, +(kb.flow + 0.1).toFixed(1));
-    if (e.code === 'Space') { kb.spray = !kb.spray; e.preventDefault(); }
-    kbHandlers.forEach((f) => f(e.code));
+    for (const a of acts) {
+      if (a === 'arm') kb.arm = kb.arm ? 0 : 1;
+      if (a === 'mode1') kb.modePos = 0;
+      if (a === 'mode2') kb.modePos = 1;
+      if (a === 'mode3') kb.modePos = 2;
+      if (a === 'auto') kb.modePos = 3; // AUTO (mission)
+      if (a === 'rtl') kb.rtl = !kb.rtl;
+      if (a === 'kill') kb.kill = !kb.kill;
+      if (a === 'flowDown') kb.flow = Math.max(0, +(kb.flow - 0.1).toFixed(1));
+      if (a === 'flowUp') kb.flow = Math.min(1, +(kb.flow + 0.1).toFixed(1));
+      if (a === 'spray') kb.spray = !kb.spray;
+    }
+    acts.forEach((a) => kbHandlers.forEach((f) => f(a)));
   }
   keys.add(e.code);
-  if (e.code.startsWith('Arrow')) e.preventDefault();
+  if (acts.length && (e.code.startsWith('Arrow') || e.code === 'Space' || e.code === 'Backspace' || e.code.startsWith('Page'))) e.preventDefault();
 });
 window.addEventListener('keyup', (e) => keys.delete(e.code));
 window.addEventListener('blur', () => keys.clear());
 
 let kbThr = 0;
 function keyboardSticks(armed: boolean): Sticks {
-  const k = (c: string) => (keys.has(c) ? 1 : 0);
+  const k = (action: string) => (keys.has(keyOf(action)) ? 1 : 0);
   // Mode 2 layout: W/S throttle, A/D yaw, arrows pitch/roll
-  const up = k('KeyW'), dn = k('KeyS');
+  const up = k('thrUp'), dn = k('thrDown');
   const centre = armed ? 0.5 : 0;
   const target = up ? 0.85 : dn ? 0.15 : centre;
   kbThr += (target - kbThr) * 0.25;
   return {
-    roll: k('ArrowRight') - k('ArrowLeft'), pitch: k('ArrowUp') - k('ArrowDown'), yaw: k('KeyD') - k('KeyA'),
+    roll: k('rollR') - k('rollL'), pitch: k('pitchF') - k('pitchB'), yaw: k('yawR') - k('yawL'),
     thr: kbThr, arm: kb.arm, modePos: kb.modePos, spray: kb.spray, rtl: kb.rtl, viewPos: 0, kill: kb.kill, flow: kb.flow, reset: false,
     source: 'Keyboard', ok: true, sampleTime: performance.now(),
   };

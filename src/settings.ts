@@ -33,9 +33,11 @@ export interface Settings {
   /** training ground: a named place id, or 'custom' with category + seed */
   place: { id: string; category: 'agri' | 'wedding'; seed: number };
   trainee: string;
+  chargeMinutes?: number; // charger 0→100 % time (training default 6, real 30–60)
+  keys: Record<string, string>; // keyboard bindings: action → KeyboardEvent.code
   sv?: number; // settings schema version
   mission: MissionPlan;
-  audio: { on: boolean; volume: number };
+  audio: { on: boolean; volume: number; voice?: boolean };
 }
 
 const ax = (index: number, reverse = false): Src => ({ kind: 'axis', index, reverse, min: -1, center: 0, max: 1 });
@@ -62,7 +64,7 @@ const KEY = 'osf-sim-settings-v1';
 export function defaultSettings(): Settings {
   return {
     droneId: 'marut_ag365h',
-    env: { ...ENV_PRESETS.calm, timeOfDay: 9, hdri: 'sunflowers', holdAssist: true },
+    env: { ...ENV_PRESETS.calm, timeOfDay: 9, hdri: 'sunflowers', holdAssist: true, crop: 'soybean', grass: 'lush' },
     profiles: {},
     activeDevice: '',
     camera: { view: 'vlos', fov: 50, pilotX: PILOT_DEFAULT.x, pilotY: PILOT_DEFAULT.y, eye: PILOT_DEFAULT.eye, fpvTilt: -15, vlosZoom: false },
@@ -70,6 +72,8 @@ export function defaultSettings(): Settings {
     display: { units: 'metric', orientArrow: false, groundMarker: true, showSticks: true, quality: 'high', trail: true },
     place: { id: 'agri-classic', category: 'agri', seed: 0 },
     trainee: '',
+    chargeMinutes: 6,
+    keys: {},
     sv: 2,
     mission: defaultPlan(),
     audio: { on: true, volume: 0.7 },
@@ -84,7 +88,7 @@ function load(): Settings {
     const s = JSON.parse(raw);
     // v2 settings: default weather is calm (wind used to be on by default and made hold modes drift)
     if (!s.sv || s.sv < 2) { s.env = { ...s.env, windSpd: 0, gust: 0, turb: 0, holdAssist: true }; s.sv = 2; }
-    return { ...d, ...s, env: { ...d.env, ...s.env }, camera: { ...d.camera, ...s.camera }, latency: { ...d.latency, ...s.latency }, display: { ...d.display, ...s.display }, mission: { ...d.mission, ...s.mission }, audio: { ...d.audio, ...s.audio }, place: { ...d.place, ...s.place } };
+    return { ...d, ...s, env: { ...d.env, ...s.env }, camera: { ...d.camera, ...s.camera }, latency: { ...d.latency, ...s.latency }, display: { ...d.display, ...s.display }, mission: { ...d.mission, ...s.mission }, audio: { ...d.audio, ...s.audio }, place: { ...d.place, ...s.place }, keys: { ...d.keys, ...s.keys } };
   } catch { return d; }
 }
 

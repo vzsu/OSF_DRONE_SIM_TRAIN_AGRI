@@ -8,6 +8,7 @@ import { buildDrone, type DroneModel } from './droneModel';
 import { loadHdri, HDRIS } from './environment';
 import type { Engine } from '../sim/engine';
 import { settings, type View } from '../settings';
+import { cropById, grassById } from '../data/crops';
 
 const v3 = (x: number, y: number, z: number) => new THREE.Vector3(x, z, -y);
 const texLoader = new THREE.TextureLoader();
@@ -133,6 +134,8 @@ export class World3D {
   // training ground (rebuilt when the place changes)
   private site = new THREE.Group();
   private siteKey = '';
+  // rotor downwash + wind sway on the crop canopy (vertex shader uniforms)
+  private cropUniforms = { uDrone: { value: new THREE.Vector3(0, -100, 0) }, uStrength: { value: 0 }, uRad: { value: 2 }, uTime: { value: 0 }, uWind: { value: 0 } };
   // flight trail
   private TRAIL_MAX = 1500;
   private trailPos = new Float32Array(this.TRAIL_MAX * 3);
@@ -147,6 +150,12 @@ export class World3D {
   // stabilised gimbal camera (camera drones)
   gimbalPitch = -15;
   private gimbalQ = new THREE.Quaternion();
+  // auxiliary drone-camera render for LAN screens (set by LinkHost)
+  auxCtx: CanvasRenderingContext2D | null = null;
+  private auxCam = new THREE.PerspectiveCamera(52, 16 / 9, 0.05, 4000);
+  private auxQ = new THREE.Quaternion();
+  private auxAt = 0;
+  private auxBuf: Uint8Array | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
@@ -278,7 +287,7 @@ export class World3D {
 
   /** Rebuild the training ground after setWorld() (new place / category). */
   rebuildSite() {
-    if (this.siteKey === `${WORLD.category}:${WORLD.seed}`) return;
+    if (this.siteKey === this.siteId()) return;
     this.site.traverse((o) => {
       const m = o as THREE.Mesh;
       if (m.geometry) m.geometry.dispose();
@@ -291,7 +300,9 @@ export class World3D {
 
   private buildSite() {
     const s = this.site;
-    this.siteKey = `${WORLD.category}:${WORLD.seed}`;
+    this.siteKey = this.siteId();
+    const tint = grassById(settings.env.grass).tint;
+    for (const m of [this.proceduralGround, this.nearGrass]) (m.material as THREE.MeshStandardMaterial).color.setHex(tint);
     const addBox = (x: number, y: number, w: number, d: number, h: number, m: THREE.Material, z0 = 0) => {
       const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); b.position.copy(v3(x, y, z0 + h / 2)); b.receiveShadow = true; b.castShadow = true; s.add(b); return b;
     };
@@ -299,9 +310,16 @@ export class World3D {
     const fcx = (FIELD.x0 + FIELD.x1) / 2, fcy = (FIELD.y0 + FIELD.y1) / 2;
     if (WORLD.category === 'agri') {
       // field: ploughed soil + instanced crop rows + bunds
+      const crop = cropById(settings.env.crop);
       const soil = new THREE.Mesh(new THREE.PlaneGeometry(fw, fh), new THREE.MeshStandardMaterial({
         map: tex('/tex/brown_mud_dry_diff.jpg', 25, true), normalMap: tex('/tex/brown_mud_dry_nor.jpg', 25, false), roughness: 0.95,
+        color: new THREE.Color(crop.soil).lerp(new THREE.Color(0xffffff), 0.45),
       }));
+      if (crop.id === 'paddy') {
+        // flooded paddy: thin reflective water sheet between the plants
+        const water = new THREE.Mesh(new THREE.PlaneGeometry(fw, fh), new THREE.MeshStandardMaterial({ color: 0x4a5a48, roughness: 0.08, metalness: 0.2, transparent: true, opacity: 0.75 }));
+        water.rotation.x = -Math.PI / 2; water.position.copy(v3(fcx, fcy, 0.06)); water.renderOrder = 3; s.add(water);
+      }
       soil.rotation.x = -Math.PI / 2; soil.position.copy(v3(fcx, fcy, 0.03));
       soil.receiveShadow = true; soil.renderOrder = 3; s.add(soil);
       this.buildCrops();
@@ -414,14 +432,39 @@ export class World3D {
     }
   }
 
+  private siteId() { return `${WORLD.category}:${WORLD.seed}:${settings.env.crop}:${settings.env.grass}`; }
+
   private buildCrops() {
-    const row = this.hq ? 0.9 : 1.8, step = this.hq ? 0.45 : 0.9;
+    const crop = cropById(settings.env.crop);
+    if (!crop.height) return;
+    // keep the instance count bounded: thin out dense crops (paddy, wheat) and make each card wider
+    const area = (FIELD.x1 - FIELD.x0) * (FIELD.y1 - FIELD.y0);
+    const maxN = this.hq ? 60000 : 22000;
+    const k0 = Math.max(1, Math.sqrt(area / (crop.row * crop.step) / maxN));
+    const row = crop.row * k0, step = crop.step * k0, w = crop.cardW * Math.min(k0, 2.2);
     const xs: number[] = [];
     for (let x = FIELD.x0 + 0.6; x < FIELD.x1 - 0.4; x += row) xs.push(x);
     const perRow = Math.floor((FIELD.y1 - FIELD.y0 - 1.2) / step);
     const count = xs.length * perRow;
-    const geo = foliageCards(0.7, 0.6, 2, 0);
+    const geo = foliageCards(w, crop.height, crop.height > 1.5 ? 3 : 2, 0);
     const mat = new THREE.MeshStandardMaterial({ map: cropTexture(), alphaTest: 0.45, roughness: 0.85 });
+    // bend the plants away from the rotor downwash and sway them in the wind (world-space vertex shader)
+    mat.onBeforeCompile = (sh) => {
+      Object.assign(sh.uniforms, this.cropUniforms);
+      sh.vertexShader = 'uniform vec3 uDrone; uniform float uStrength; uniform float uRad; uniform float uTime; uniform float uWind;\n' + sh.vertexShader.replace('#include <project_vertex>', `
+        vec4 mvPosition = vec4( transformed, 1.0 );
+        #ifdef USE_INSTANCING
+          mvPosition = instanceMatrix * mvPosition;
+        #endif
+        vec4 wp = modelMatrix * mvPosition;
+        float hh = max(wp.y, 0.0);
+        vec2 dd = wp.xz - uDrone.xz; float rr = length(dd) + 0.001;
+        float f = uStrength * exp(-rr * rr / (uRad * uRad)) * hh;
+        wp.xz += dd / rr * f * 0.8; wp.y -= f * 0.3 * hh;
+        wp.x += sin(uTime * 1.7 + wp.x * 0.6 + wp.z * 0.35) * 0.04 * hh * uWind;
+        mvPosition = viewMatrix * wp;
+        gl_Position = projectionMatrix * mvPosition;`);
+    };
     const mesh = new THREE.InstancedMesh(geo, mat, count);
     const m = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), p = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
     const col = new THREE.Color();
@@ -433,7 +476,7 @@ export class World3D {
       q.setFromAxisAngle(up, rnd() * Math.PI);
       const s = 0.75 + rnd() * 0.5; sc.set(s, s * (0.85 + rnd() * 0.3), s);
       m.compose(p, q, sc); mesh.setMatrixAt(k, m);
-      mesh.setColorAt(k, col.setHSL(0.22 + rnd() * 0.05, 0.45, 0.42 + rnd() * 0.15));
+      mesh.setColorAt(k, col.setHSL(crop.hue + (rnd() - 0.5) * 0.04, crop.sat, crop.light + rnd() * 0.15));
       k++;
     }
     mesh.receiveShadow = true;
@@ -541,7 +584,18 @@ export class World3D {
     this.pilot.lookAt(pos.x, 0, pos.z);
     this.updateSpray(e, pos, q, dtReal);
     this.updateTrail(pos, o('ARMED') > 0.5);
+    {
+      const cu = this.cropUniforms, d = this.droneDef;
+      const agl = Math.max(o('Z') - (e.env.cropH ?? 0), 0.3);
+      cu.uDrone.value.copy(pos);
+      cu.uStrength.value = Math.min(1.2, o('THRUST') / (o('MASS') * 9.81 + 1e-3) * d.propD * 1.6 / (0.4 + agl * 0.6));
+      cu.uRad.value = d.bodyR * 1.3 + agl * 0.35;
+      cu.uTime.value = performance.now() / 1000;
+      cu.uWind.value = Math.min(3, e.env.windSpd / 3 + e.env.turb);
+    }
     this.updateCamera(settings.camera.view, pos, q, dtReal);
+    this.pilot.visible = true;
+    if (this.auxCtx && performance.now() - this.auxAt > 66) { this.auxAt = performance.now(); this.renderAux(pos, q, dtReal); }
     this.pilot.visible = settings.camera.view !== 'vlos';
     this.drone.group.visible = settings.camera.view !== 'fpv' && settings.camera.view !== 'cam';
     this.renderer.render(this.scene, this.camera);
@@ -628,6 +682,34 @@ export class World3D {
       c.lookAt(pos.x, 0, pos.z);
     }
     if (Math.abs(c.fov - fov) > 0.01) { c.fov = fov; c.updateProjectionMatrix(); }
+  }
+
+  /** Render the drone's own camera into auxCtx (640×360): gimbal camera on DJI, nose FPV on agri.
+   *  Drawn into a corner of the main framebuffer and read back before the main render clears it,
+   *  so it gets the same tone mapping / colours as the screen. */
+  private renderAux(pos: THREE.Vector3, q: THREE.Quaternion, dt: number) {
+    const ctx = this.auxCtx!, W = ctx.canvas.width, H = ctx.canvas.height, d = this.droneDef!;
+    const fwd = new THREE.Vector3(1, 0, 0).applyQuaternion(q); fwd.y = 0; if (fwd.lengthSq() < 1e-6) fwd.set(1, 0, 0); fwd.normalize();
+    const yaw = Math.atan2(-fwd.z, fwd.x);
+    const pitch = d.fc === 'dji' ? this.gimbalPitch : -20;
+    const want = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, yaw - Math.PI / 2, 0, 'YXZ')).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), pitch * Math.PI / 180));
+    if (d.fc === 'dji') this.auxQ.slerp(want, 1 - Math.exp(-Math.max(dt, 0.016) * 10)); else this.auxQ.copy(q).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -Math.PI / 2)).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), pitch * Math.PI / 180));
+    this.auxCam.quaternion.copy(this.auxQ);
+    this.auxCam.position.copy(pos).add(new THREE.Vector3(Math.max(d.bodyR * 0.35, 0.08), -Math.max(d.bodyR * 0.12, 0.05), 0).applyQuaternion(q));
+    this.auxCam.fov = d.fc === 'dji' ? 52 : 70; this.auxCam.updateProjectionMatrix();
+    const r = this.renderer, dpr = r.getPixelRatio();
+    const vis = this.drone!.group.visible; this.drone!.group.visible = false;
+    r.setScissorTest(true); r.setViewport(0, 0, W / dpr, H / dpr); r.setScissor(0, 0, W / dpr, H / dpr);
+    r.render(this.scene, this.auxCam);
+    const gl = r.getContext();
+    if (!this.auxBuf || this.auxBuf.length !== W * H * 4) this.auxBuf = new Uint8Array(W * H * 4);
+    gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, this.auxBuf);
+    r.setScissorTest(false);
+    const full = r.getSize(new THREE.Vector2()); r.setViewport(0, 0, full.x, full.y);
+    this.drone!.group.visible = vis;
+    const img = ctx.createImageData(W, H), src = this.auxBuf, row = W * 4;
+    for (let y = 0; y < H; y++) img.data.set(src.subarray((H - 1 - y) * row, (H - y) * row), y * row); // flip vertically
+    ctx.putImageData(img, 0, 0);
   }
 
   snap(e: Engine) {

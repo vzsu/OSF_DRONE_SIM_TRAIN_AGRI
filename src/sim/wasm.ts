@@ -5,6 +5,8 @@ export interface EnvSettings {
   elev: number; temp: number; windSpd: number; windDir: number; gust: number; turb: number;
   gpsBaseSats: number; seed: number; tankFill: number; battSoc: number;
   holdAssist?: boolean; // ALT HOLD / ATTI holds position when sticks are centred
+  cropH?: number; // crop canopy height over the field (m)
+  crop?: string; grass?: string; // visual + radar crop type, ground cover
 }
 
 export const ENV_PRESETS: Record<string, EnvSettings> = {
@@ -20,6 +22,7 @@ export interface SimInputs {
   armSw: number; armSwEnabled: boolean; spray: boolean; rtl: boolean; rcOk: boolean;
   kill?: boolean; flow?: number; // emergency motor stop, pump flow 0..1
   auto?: AutoCmd;
+  armCmd?: boolean;
 }
 
 /** Guidance for AUTO mode (mission): fly leg A→B at height z (z<0 = land) and speed spd. */
@@ -46,8 +49,9 @@ export async function loadSim(bytes: ArrayBuffer | Uint8Array): Promise<SimCore>
   return core;
 }
 
-export function writeParams(core: SimCore, d: DroneDef, env: EnvSettings, home: { x: number; y: number; yaw: number }, obstacles: number[][]) {
+export function writeParams(core: SimCore, d: DroneDef, env: EnvSettings, home: { x: number; y: number; yaw: number }, obstacles: number[][], field?: { x0: number; x1: number; y0: number; y1: number }) {
   const p = core.P;
+  p[P.FIELD_X0] = field?.x0 ?? 0; p[P.FIELD_X1] = field?.x1 ?? 0; p[P.FIELD_Y0] = field?.y0 ?? 0; p[P.FIELD_Y1] = field?.y1 ?? 0; p[P.CROP_H] = env.cropH ?? 0;
   const deg = Math.PI / 180;
   p[P.MASS_EMPTY] = d.massEmpty; p[P.TANK_CAP_L] = d.tankCap; p[P.TANK_INIT_L] = d.tankCap * env.tankFill; p[P.LIQ_DENS] = 1.0;
   p[P.N_MOTORS] = d.nMotors; p[P.COAX] = d.coax ? 1 : 0; p[P.ARM_LEN] = d.armLen; p[P.PROP_D] = d.propD;
@@ -82,6 +86,7 @@ export function writeInputs(core: SimCore, s: SimInputs, f: Failures) {
   n[I.KILL] = s.kill ? 1 : 0; n[I.FLOW] = s.flow ?? 1;
   const a = s.auto;
   n[I.AUTO_ON] = a?.on ? 1 : 0;
+  n[I.ARM_CMD] = s.armCmd ? 1 : 0;
   if (a) { n[I.AUTO_AX] = a.ax; n[I.AUTO_AY] = a.ay; n[I.AUTO_BX] = a.bx; n[I.AUTO_BY] = a.by; n[I.AUTO_Z] = a.z; n[I.AUTO_SPD] = a.spd; }
   n[I.FAIL_MOTOR] = f.motor; n[I.FAIL_GPS] = f.gps ? 1 : 0; n[I.COMPASS_ERR] = f.compassErrDeg;
 }

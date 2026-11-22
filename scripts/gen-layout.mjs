@@ -18,6 +18,7 @@ const PARAMS = [
   // environment
   'ELEV', 'TEMP', 'WIND_SPD', 'WIND_DIR', 'GUST', 'TURB', 'GPS_BASE_SATS', 'RTK', 'SEED',
   'HOME_X', 'HOME_Y', 'HOME_YAW',
+  'FIELD_X0', 'FIELD_X1', 'FIELD_Y0', 'FIELD_Y1', 'CROP_H', // crop canopy: radar measures height above the crop
   'HOLD_ASSIST', // 1 = ALT HOLD / ATTI brakes and holds position when sticks are centred (beginner)
   'OBS_COUNT',
 ];
@@ -28,6 +29,7 @@ const INPUTS = [
   'FAIL_MOTOR', 'FAIL_GPS', 'COMPASS_ERR', 'WIND_SPD', 'WIND_DIR', 'GUST', 'TURB', 'KILL', 'FLOW',
   // AUTO mission guidance from the TS mission manager: fly the leg A→B at height Z (Z<0 = land), speed SPD
   'AUTO_ON', 'AUTO_AX', 'AUTO_AY', 'AUTO_BX', 'AUTO_BY', 'AUTO_Z', 'AUTO_SPD',
+  'ARM_CMD', // ground-station arm request (rising edge), like 'slide to take off'
 ];
 
 const OUTPUTS = [

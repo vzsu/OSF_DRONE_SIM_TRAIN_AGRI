@@ -105,6 +105,7 @@ let rollS: f64 = 0, pitchS: f64 = 0; // shaped attitude targets
 let pilotAtt = true; // attitude target comes straight from the sticks (not from the position controller)
 let vrsTimer: f64 = 0, vrsClearTimer: f64 = 10;
 let holdLatched = false;
+let armCmdPrev = false;
 
 // attitude gains derived from motor time constant
 function attKr(): f64 { return p(L.P_RESP) * 0.6 / p(L.P_TAU_MOTOR); }
@@ -296,7 +297,9 @@ function updateSensors(dt: f64): void {
   baroErr += -baroErr / 30.0 * dt + 0.35 * Math.sqrt(2 * dt / 30.0) * gauss();
   baroAlt = pz + baroErr + 0.04 * gauss();
   radarValid = p(L.P_HAS_RADAR) > 0.5 && pz < 30.0;
-  radarAgl = pz + 0.02 * gauss();
+  // agri radar sees the crop canopy, so height is held ABOVE THE CROP over the field
+  const inField = px > p(L.P_FIELD_X0) && px < p(L.P_FIELD_X1) && py > p(L.P_FIELD_Y0) && py < p(L.P_FIELD_Y1);
+  radarAgl = pz - (inField ? p(L.P_CROP_H) : 0) + 0.02 * gauss();
   altEst = radarValid ? radarAgl : baroAlt;
   yawEst = wrapPi(yaw() + inp(L.I_COMPASS_ERR) * PI / 180.0);
   // gps health with hysteresis
@@ -377,6 +380,10 @@ function control(dt: f64): void {
     if (!sw && armSwPrev && armed) { if (landed || crashed) disarm(); else ev(EV_DISARM_REFUSED); }
     armSwPrev = sw;
   }
+  // ground-station arm command (slide to start)
+  const ac = inp(L.I_ARM_CMD) > 0.5;
+  if (ac && !armCmdPrev && !armed) tryArm(0);
+  armCmdPrev = ac;
   if (sT < 0.06 && sY > 0.85 && !armed) armGestTimer += dt; else armGestTimer = 0;
   if (sT < 0.06 && sY < -0.85 && armed && landed) disarmGestTimer += dt; else disarmGestTimer = 0;
   if (!gestLatch && armGestTimer > 1.5) { tryArm(sT); gestLatch = true; }

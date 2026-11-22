@@ -1,7 +1,9 @@
 // Real-time loop: input sampling → (optional link delay) → fixed-step WASM physics at 400 Hz → 50 Hz log.
 import { loadSim, writeParams, writeInputs, drainEvents, eventText, MODES, DJI_MODES, O, I, type SimCore, type Failures, type EnvSettings } from './wasm';
 import { droneById, type DroneDef } from '../data/drones';
-import { HOME, obstacleList, WORLD } from '../data/world';
+import { HOME, obstacleList, WORLD, FIELD } from '../data/world';
+import { BatteryBay } from './batteries';
+import { cropById } from '../data/crops';
 import { MissionRunner } from './mission';
 import { Coverage, GRID } from './coverage';
 import { scoreFlight } from '../logs/score';
@@ -32,6 +34,13 @@ export class Engine {
   recorder!: Recorder;
   frameMs = 16;
   mission = new MissionRunner();
+  bay = new BatteryBay();
+  /** ground-station mode override (5 AUTO, 2 hold/pause, 3 RTH); null = the RC mode switch decides */
+  gcsMode: number | null = null;
+  private armCmdFrames = 0;
+  private lastModePos = -1;
+  /** take-off / resume request from the ground station: pulse the arm command for a few frames */
+  requestArm() { this.armCmdFrames = 6; }
   coverage = new Coverage();
   /** RC reset button (rising edge) → restart on the pad */
   onResetRequest: () => void = () => {};
@@ -48,7 +57,10 @@ export class Engine {
   start(droneId: string, env: EnvSettings) {
     this.drone = droneById(droneId);
     this.env = { ...env, seed: Math.floor(Math.random() * 1e6) };
-    writeParams(this.core, this.drone, this.env, HOME, obstacleList());
+    this.env.cropH = WORLD.category === 'agri' ? cropById(env.crop).height : 0;
+    writeParams(this.core, this.drone, this.env, HOME, obstacleList(), FIELD);
+    this.bay.reset(env.battSoc, env.temp, settings.chargeMinutes ?? 6);
+    this.gcsMode = null; this.armCmdFrames = 0; this.lastModePos = -1;
     this.core.setup();
     this.fail = { motor: 0, gps: false, compassErrDeg: 0 };
     this.rcLost = false; this.paused = false; this.acc = 0; this.lastFrame = 0; this.queue = [];
@@ -102,9 +114,13 @@ export class Engine {
       soc: o('BATT_SOC'), lowBatt: this.drone.lowBatt, tank: o('TANK_L'), hasTank: this.drone.tankCap > 0,
     });
     const inAuto = o('MODE') === 5;
+    // moving the RC mode switch always takes control back from the ground station
+    if (this.lastModePos >= 0 && use.modePos !== this.lastModePos && this.gcsMode !== null) { this.gcsMode = null; this.onEvent(950, 'Manual control: mode switch moved'); }
+    this.lastModePos = use.modePos;
+    const armCmd = this.armCmdFrames > 0; if (armCmd) this.armCmdFrames--;
     writeInputs(this.core, {
       roll: use.roll, pitch: use.pitch, yaw: use.yaw, thr: use.thr,
-      mode: use.modePos === 3 ? 5 : (modePositions[use.modePos] ?? 1),
+      mode: this.gcsMode ?? (use.modePos === 3 ? 5 : (modePositions[use.modePos] ?? 1)), armCmd,
       armSw: use.arm, armSwEnabled: usingSwitchArm(), spray: inAuto ? ms.spray : use.spray, rtl: use.rtl, rcOk: use.ok && !this.rcLost,
       kill: use.kill, flow: use.flow, auto: ms.cmd,
     }, this.fail);
@@ -120,6 +136,7 @@ export class Engine {
       steps -= n;
       if (this.o('T') >= this.nextLog - 1e-9) { this.log(use); this.nextLog += LOG_DT; }
     }
+    this.bay.tick(dtReal, o('BATT_SOC'), o('BATT_I'));
     this.coverage.update(o('SPRAYING') > 0.5, o('X'), o('Y'), agl, o('WIND_X'), o('WIND_Y'), this.swath());
     const ev = drainEvents(this.core, this.evCount);
     this.evCount = ev.count;
@@ -133,11 +150,39 @@ export class Engine {
   /** Effective spray swath: the mission lane spacing for agri drones (what the operator configured). */
   swath(): number { return settings.mission.spacing || 4; }
 
-  /** Ground service on the pad: fresh battery + full tank (only while disarmed). */
+  /** Ground service: move a battery pack (drone / charger / ground). Drone must be landed + disarmed. */
+  movePack(id: string, to: 'drone' | 'charger' | 'ground'): string {
+    const p = this.bay.packs.find((x) => x.id === id);
+    if (!p) return 'No such pack';
+    const touchesDrone = to === 'drone' || p.place === 'drone';
+    if (touchesDrone && this.o('ARMED') > 0.5) return 'Land and disarm before touching the drone battery';
+    if (to === 'drone' && p.soc < this.drone.lowBatt / 100 + 0.05) return `Pack ${id} is only ${Math.round(p.soc * 100)}% — charge it first`;
+    const err = this.bay.move(id, to);
+    if (err) return err;
+    const inD = this.bay.inDrone;
+    this.core.service(inD ? inD.soc : 0, this.o('TANK_L'));
+    this.recorder.event(this.o('T'), 900, inD ? `Battery ${inD.id} installed (${Math.round(inD.soc * 100)}%)` : `Battery ${id} removed`);
+    return '';
+  }
+
+  /** Refill the spray tank (landed + disarmed). */
+  refillTank(): string {
+    if (this.o('ARMED') > 0.5) return 'Land and disarm before refilling';
+    if (this.drone.tankCap <= 0) return 'This drone has no spray tank';
+    const inD = this.bay.inDrone;
+    this.core.service(inD ? inD.soc : 0, this.drone.tankCap);
+    this.recorder.event(this.o('T'), 901, 'Tank refilled');
+    return '';
+  }
+
+  /** Quick service (key B legacy): swap in the fullest spare pack and refill. */
   service(): boolean {
     if (this.o('ARMED') > 0.5) return false;
-    this.core.service(1, this.drone.tankCap);
-    this.recorder.event(this.o('T'), 900, 'Battery swapped, tank refilled');
+    const cur = this.bay.inDrone;
+    const best = this.bay.packs.filter((p) => p.place !== 'drone').sort((a, b) => b.soc - a.soc)[0];
+    if (cur) { const e = this.bay.move(cur.id, this.bay.onCharger ? 'ground' : 'charger'); if (e) return false; }
+    if (best) this.movePack(best.id, 'drone');
+    if (this.drone.tankCap > 0) this.refillTank();
     return true;
   }
 

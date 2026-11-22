@@ -84,6 +84,12 @@ Update the checklist and the log at the end of every work block.
 - [x] Generated training grounds: agri farms + wedding venues (mandap, stage, tents, crowd no-fly, string lights); PLACES + "generate new"; world test for every place
 - [x] Accounts: login, admin panel (add/delete/reset students, progress table), server-side log ownership; auth test + HTTP smoke test
 - [x] docs/USER_MANUAL.md (humans) + AGENTS.md (agents)
+### P11 v0.5 (2026-11-22)
+- [x] Ground-station tablet (slides up, G): geo map + area editor, Plan/Fly/Battery tabs, slide-to-start, animated pre-flight checks with tones + voice, ESC start-up tones, RTH tones/voice, pause/resume/RTH/manual
+- [x] 3-pack battery bay with charger slot, heat/cool, charge time setting; tank refill; breakpoint resume flow through the tablet
+- [x] Crop presets (paddy…sugarcane, bare) + grass; radar measures above the canopy (WASM CROP_H + field bounds); downwash bending + wind sway shader
+- [x] Remappable keyboard shortcuts (Settings → Keyboard shortcuts)
+- [x] LAN phone/tablet screen: /remote page, 6-digit code, WebRTC drone-camera video + full GCS over a data channel (signalling smoke-tested; browser WebRTC not yet tested on a real phone)
 ### Next (not started)
 - [ ] Owner hardware check: fly with the real Pocket and tune feel (expo, rates, `resp`, `tauMotor`)
 - [ ] Real AG365XP spec sheet → `src/data/drones.ts`
@@ -103,6 +109,8 @@ Update the checklist and the log at the end of every work block.
 - 2026-11-22: v0.3 training features (see P9). 36 tests green, production build clean. Browser check pending (low RAM).
 
 - 2026-11-22: v0.4 (P10). 48 tests green, build clean, auth smoke-tested on the real server (admin account created in data/).
+
+- 2026-11-22: v0.5 (P11). 50 tests green, build clean, link/auth API smoke-tested.
 
 ## Lessons / working rules (grow this list)
 - "Drift in hold" complaints: first check the default weather preset — the default had wind on. Physics was right for ATTI; product default was wrong.

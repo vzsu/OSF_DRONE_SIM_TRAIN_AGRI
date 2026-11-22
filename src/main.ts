@@ -6,6 +6,10 @@ import { missionScreen } from './ui/mission';
 import { loginScreen, adminScreen } from './ui/account';
 import { me, logout, currentUser, offline } from './auth/client';
 import { DroneSound } from './audio/sound';
+import { voiceForEvent, speak } from './audio/voice';
+import { GcsHost, type Telemetry } from './gcs/host';
+import { GcsUI } from './gcs/ui';
+import { LinkHost } from './net/linkHost';
 import { DRONES } from './data/drones';
 import { HOME, setWorld, generateWorld, placeById, WORLD, overCrowd } from './data/world';
 import { defaultPlan } from './sim/mission';
@@ -28,6 +32,28 @@ let lastViewPos = -1;
 let pauseEl: HTMLElement | null = null;
 let slowWarned = false;
 const sound = new DroneSound();
+// ---------- ground-station tablet (slides up from the bottom; same UI on LAN devices) ----------
+const gcsHost = new GcsHost(engine, {
+  beep: (f, n, len) => sound.beep(f, n, len), toast: (t, bad) => toast(t, bad),
+  missionChanged: () => reloadMission(),
+});
+let telCache: Telemetry | null = null, telAt = 0;
+const localTel = () => {
+  if (!flying) return null;
+  const now = performance.now();
+  if (!telCache || now - telAt > 100) { telCache = gcsHost.telemetry(false, true); telAt = now; }
+  return telCache;
+};
+const gcs = new GcsUI({ tel: localTel, world: () => (flying ? gcsHost.worldGeo() : null), send: (c) => gcsHost.command(c) }, document.body, true);
+{
+  const h = document.createElement('div'); h.className = 'gcs-handle'; h.title = 'Close (G)'; h.onclick = () => gcs.close();
+  gcs.root.prepend(h);
+}
+const gcsBtn = document.createElement('button');
+gcsBtn.className = 'gcs-open-btn'; gcsBtn.textContent = 'Ground station (G)';
+gcsBtn.onclick = () => gcs.toggle();
+document.body.appendChild(gcsBtn);
+const linkHost = new LinkHost(engine, world, gcsHost, (t, bad) => toast(t, bad));
 let missionKey = '';
 for (const ev of ['pointerdown', 'keydown']) window.addEventListener(ev, () => sound.unlock());
 
@@ -49,11 +75,12 @@ function cycleView() { const vs = viewsFor(); settings.camera.view = vs[(vs.inde
 /** Build the selected training ground (agri farm / wedding venue) for physics, renderer, map. */
 function applyPlace() {
   const pl = settings.place.id === 'custom' ? { category: settings.place.category, seed: settings.place.seed, name: '' } : placeById(settings.place.id);
-  if (WORLD.category === pl.category && WORLD.seed === pl.seed) return;
-  setWorld(generateWorld(pl.category, pl.seed, pl.name));
-  world.rebuildSite();
-  // keep the mission area on the new field
-  settings.mission.poly = defaultPlan().poly; saveSettings();
+  if (WORLD.category !== pl.category || WORLD.seed !== pl.seed) {
+    setWorld(generateWorld(pl.category, pl.seed, pl.name));
+    // keep the mission area on the new field
+    settings.mission.poly = defaultPlan().poly; saveSettings();
+  }
+  world.rebuildSite(); // no-op unless place, crop or grass changed
 }
 
 function nav(screen: string, arg?: unknown) {
@@ -67,6 +94,7 @@ function nav(screen: string, arg?: unknown) {
     return;
   }
   // settings and mission planner can be opened mid-flight: the flight stays paused underneath
+  gcs.close();
   const keep = flying && (screen === 'settings' || screen === 'mission');
   if (keep) { engine.paused = true; setBack('resume', '← Back to flight'); }
   else { flying = false; setBack('home', '← Home'); }
@@ -105,6 +133,7 @@ function startFlight() {
   world.snap(engine);
   missionKey = JSON.stringify(settings.mission);
   hud.resetTrail(); hud.missionChanged();
+  gcsHost.reset(); linkHost.worldChanged();
   keyboardArmReset();
   uiEl.innerHTML = '';
   hud.show(true);
@@ -123,15 +152,20 @@ async function endFlight() {
   nav('debrief', log);
 }
 
-engine.mission.onMessage = (text, bad) => { toast(text, bad); sound.beep(bad ? 700 : 1500, bad ? 2 : 1, 0.07); };
+engine.mission.onMessage = (text, bad) => {
+  toast(text, bad); sound.beep(bad ? 700 : 1500, bad ? 2 : 1, 0.07);
+  if (/breakpoint saved/i.test(text)) speak('Breakpoint saved'); else if (/Resuming/.test(text)) speak('Resuming from breakpoint'); else if (/All lanes sprayed/.test(text)) speak('Spraying complete. Returning home'); else if (/Mission start/.test(text)) speak('Mission started');
+};
 engine.onResetRequest = () => { if (flying) { toast('Reset — back on the pad'); startFlight(); } };
 function serviceDrone() {
   if (!flying) return;
+  gcs.open('battery'); return;
   if (engine.service()) { toast('Battery swapped and tank refilled. Arm to continue — AUTO resumes from the breakpoint.'); sound.beep(1200, 2); }
   else toast('Land and disarm before changing the battery / refilling', true);
 }
 engine.onEvent = (code, text) => {
   sound.event(code);
+  voiceForEvent(code, engine.modeNames());
   const bad = [6, 7, 8, 9, 10, 14, 15, 19].includes(code) || (code >= 4 && code <= 5) || code === 16 || code === 17 || code === 20;
   if (code === 10) text = `CRASH — ${CRASH_CAUSE[engine.o('CRASH_CAUSE')] ?? ''}`;
   toast(text, bad);
@@ -148,7 +182,7 @@ function openPause() {
   pauseEl.innerHTML = `<div class="card">
     <div class="row spread"><h2>Paused</h2><span class="muted small">${engine.drone.name}</span></div>
     <div class="row" style="margin-bottom:12px"><button class="primary" id="p-res">Resume</button><button id="p-rst">Restart on pad (Backspace)</button><button id="p-end">End flight &amp; debrief</button><button id="p-home">Quit to home</button></div>
-    <div class="row" style="margin-bottom:12px"><button id="p-set">Settings &amp; controller mapping</button><button id="p-mis">Mission planner</button><button id="p-svc">Swap battery + refill (B)</button>
+    <div class="row" style="margin-bottom:12px"><button id="p-set">Settings &amp; controller mapping</button><button id="p-mis">Mission planner</button><button id="p-svc">Batteries &amp; tank (B)</button><button id="p-link">Phone / tablet screen (LAN)</button>
       <label class="small"><input type="checkbox" id="p-snd" ${settings.audio.on ? 'checked' : ''}> Sound</label></div>
     <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr))">
       <div><h3>Drone (restarts on the pad)</h3><select id="p-drone">${DRONES.map((d) => `<option value="${d.id}" ${d.id === engine.drone.id ? 'selected' : ''}>${d.name}</option>`).join('')}</select>
@@ -177,7 +211,8 @@ function openPause() {
   q('p-set').onclick = () => nav('settings');
   q<HTMLInputElement>('p-ha').onchange = (ev) => { settings.env.holdAssist = (ev.target as HTMLInputElement).checked; saveSettings(); };
   q('p-mis').onclick = () => nav('mission');
-  q('p-svc').onclick = () => { serviceDrone(); };
+  q('p-svc').onclick = () => { closePause(); gcs.open('battery'); };
+  q('p-link').onclick = () => { linkHost.showPairing(); };
   q<HTMLInputElement>('p-snd').onchange = (ev) => { settings.audio.on = (ev.target as HTMLInputElement).checked; saveSettings(); };
   q<HTMLInputElement>('p-tf').oninput = (ev) => { settings.env.tankFill = +(ev.target as HTMLInputElement).value; q('pv-tf').textContent = `${Math.round(settings.env.tankFill * 100)}%`; saveSettings(); };
   const applyDrone = () => { settings.droneId = q<HTMLSelectElement>('p-drone').value; saveSettings(); closePause(); startFlight(); };
@@ -194,17 +229,18 @@ function openPause() {
   q<HTMLInputElement>('p-ce').oninput = (ev) => { f.compassErrDeg = +(ev.target as HTMLInputElement).value; q('pv-ce').textContent = String(f.compassErrDeg); };
 }
 
-onKey((code) => {
+onKey((a) => {
   if (!flying) return;
-  if (uiEl.querySelector('.screen')) { if (code === 'Escape') nav('resume'); return; } // settings/mission open mid-flight
-  if (code === 'Escape' || code === 'KeyP') { pauseEl ? closePause() : openPause(); }
-  if (code === 'KeyV' && !pauseEl) cycleView();
-  if (code === 'Backspace' && !uiEl.querySelector('.screen')) { closePause(); toast('Reset — back on the pad'); startFlight(); }
-  if (code === 'KeyB') serviceDrone();
-  if (code === 'KeyM' && !pauseEl) hud.toggleBigMap();
-  if (code === 'PageUp') world.gimbalPitch = Math.min(20, world.gimbalPitch + 5);
-  if (code === 'PageDown') world.gimbalPitch = Math.max(-90, world.gimbalPitch - 5);
-  if (code === 'KeyC') hud.toggleRec();
+  if (uiEl.querySelector('.screen')) { if (a === 'pause') nav('resume'); return; } // settings/mission open mid-flight
+  if (a === 'pause') { if (gcs.isOpen()) gcs.close(); else if (pauseEl) closePause(); else openPause(); }
+  if (a === 'view' && !pauseEl) cycleView();
+  if (a === 'reset') { closePause(); toast('Reset — back on the pad'); startFlight(); }
+  if (a === 'battery') gcs.open('battery');
+  if (a === 'gcs') gcs.toggle();
+  if (a === 'map' && !pauseEl) hud.toggleBigMap();
+  if (a === 'gimbalUp') world.gimbalPitch = Math.min(20, world.gimbalPitch + 5);
+  if (a === 'gimbalDown') world.gimbalPitch = Math.max(-90, world.gimbalPitch - 5);
+  if (a === 'record') hud.toggleRec();
 });
 document.addEventListener('visibilitychange', () => { if (document.hidden && flying) openPause(); });
 
@@ -226,6 +262,8 @@ function frame(now: number) {
     const cp = world.camera.position;
     sound.update(engine, { x: cp.x, y: -cp.z, z: cp.y }, dt);
     hud.update(engine, now);
+    linkHost.tick(now);
+    gcsBtn.style.display = gcs.isOpen() ? 'none' : 'block';
     if (engine.o('CRASHED') > 0.5) { crashTimer += dt; if (crashTimer > 3) endFlight(); }
     // slow PC warning: sustained low frame rate makes the controls feel laggy
     if (!slowWarned && engine.frameMs > 45 && engine.o('T') > 8 && !document.hidden) {
@@ -233,6 +271,7 @@ function frame(now: number) {
       toast(`Low frame rate (${Math.round(1000 / engine.frameMs)} fps) — controls will feel laggy. Try Settings → Display → Low, or the Simple sky environment.`, true);
     }
   } else {
+    gcsBtn.style.display = 'none';
     sound.silence();
     // idle background: slow orbit over the farm
     world.camera.position.set(Math.cos(now / 20000) * 70, 28, -40 + Math.sin(now / 20000) * 70);

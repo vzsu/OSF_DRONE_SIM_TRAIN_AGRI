@@ -39,6 +39,13 @@ On Windows the user starts everything with `start-sim.cmd` (wraps `start-sim.ps1
 | `src/logs/*` | 50 Hz recorder (`LOG_SCHEMA`), server/IndexedDB store, scoring (`score.ts`) |
 | `src/server/*` | `logStore.ts` (data/logs/*.json), `users.ts` (accounts, scrypt, HMAC cookie sessions) |
 | `src/auth/client.ts` | Browser auth helpers (`currentUser`, `offline`) |
+| `src/gcs/host.ts` | Ground-station host: `telemetry()`, `command()` (plan/start/pause/resume/rth/manual/pack/refill), slide-to-start pre-flight sequence, ENU↔lat/lon |
+| `src/gcs/ui.ts` | Tablet UI (`GcsUI`) — same code embedded (slides up, key G) and full-screen on LAN devices; talks only through `GcsLink` |
+| `src/sim/batteries.ts` | 3-pack battery bay, 1 charger slot, heating/cooling, CC/CV charging |
+| `src/data/crops.ts` | Crop + grass presets (crop height feeds the radar via `CROP_H` + field bounds params) |
+| `src/input/keys.ts` | Remappable keyboard actions (`settings.keys`); `onKey` delivers ACTION ids, not key codes |
+| `src/audio/voice.ts` | Voice prompts (speechSynthesis), per-event mapping |
+| `src/net/linkHost.ts`, `src/remote/remote.ts`, `src/app/remote/page.tsx`, `src/server/link.ts`, `api/link` | LAN screens: polling signalling mailbox (6-digit code) + WebRTC (aux drone-camera video 640×360@15 + `gcs` data channel) |
 | `tests/*` | `sim` (FC/physics), `mission` (planner, AUTO, breakpoint, score), `world` (every ground), `auth`, `replay` |
 
 ## Rules (learned the hard way — see PROGRESS.md "Lessons")
@@ -59,6 +66,8 @@ On Windows the user starts everything with `start-sim.cmd` (wraps `start-sim.ps1
 9. **Browser automation:** the Chrome automation window throttles rAF, so drive `engine.frame()` from a timer. `window.__sim` exposes `{engine, world, state, nav}` and `window.__virtualPad` fakes an RC.
 10. **This PC has ~7.5 GB RAM and often < 1 GB free.** Check free memory before starting the server and Chrome. The server has been killed for low memory before.
 11. **Windows shell:** Bash heredocs containing backticks or `${}` inside Python can break. Write patch scripts to the scratchpad with the Write tool. PowerShell `Set-Content` adds a BOM, so use the Write tool for JSON.
+13. The engine's `gcsMode` overrides the RC mode while the tablet runs a mission; any RC mode-switch movement clears it. `requestArm()` pulses the WASM `ARM_CMD` input.
+14. The aux camera for LAN video is rendered into a scissored corner of the main framebuffer and read back before the main render, so it keeps tone mapping; it only runs while a remote peer is connected.
 12. Keep `MODES` order = WASM mode numbers (0 STAB, 1 ALTHOLD, 2 LOITER, 3 RTL, 4 LAND, 5 AUTO). Event codes ≥ 100 are mode changes.
 
 ## Adding things

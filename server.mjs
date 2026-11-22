@@ -21,6 +21,7 @@ const arg = (name, def) => { const i = process.argv.indexOf(name); return i > 0 
 const dev = process.argv.includes('--dev');
 const HTTP_PORT = Number(arg('--http-port', process.env.PORT || 3000));
 const HTTPS_PORT = Number(arg('--https-port', process.env.HTTPS_PORT || 3443));
+process.env.HTTPS_PORT = String(HTTPS_PORT); // LAN link API builds the https URLs from it
 const HOST = '0.0.0.0';
 
 const VIRTUAL_NIC = /vEthernet|WSL|Hyper-V|VirtualBox|VMware|Docker|vmnet|Loopback/i;

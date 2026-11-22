@@ -15,6 +15,7 @@ export class Coverage {
   mask = new Uint8Array(GRID.w * GRID.h);
   pass = 1;
   dirty = true;
+  ver = 0; // bumps whenever cells change (ground-station map refresh)
   private lastHeading = NaN;
   private wasSpraying = false;
   private lastPos: Pt | null = null;
@@ -55,7 +56,7 @@ export class Coverage {
         const dx = GRID.x0 + i + 0.5 - cx, dy = GRID.y0 + j + 0.5 - cy;
         if (dx * dx + dy * dy > r * r) continue;
         const k = j * GRID.w + i;
-        if (this.lastPass[k] !== pass) { this.lastPass[k] = pass; if (this.count[k] < 255) this.count[k]++; this.dirty = true; }
+        if (this.lastPass[k] !== pass) { this.lastPass[k] = pass; if (this.count[k] < 255) this.count[k]++; this.dirty = true; this.ver++; }
       }
     }
   }

@@ -149,6 +149,7 @@ export class DroneSound {
   event(code: number) {
     if (code === 1) { this.beep(880, 1); setTimeout(() => this.beep(1320, 1), 120); }
     else if (code === 2) { this.beep(1320, 1); setTimeout(() => this.beep(880, 1), 120); }
+    else if (code === 103) { [1318, 1046, 784].forEach((f, i) => setTimeout(() => this.beep(f, 1, 0.14), i * 190)); } // RTH: falling triple
     else if (code >= 100) this.beep(1760, 1, 0.05);
     else if (code === 10) this.beep(180, 1, 0.5);
     else if (code === 22) this.beep(300, 3, 0.15);
