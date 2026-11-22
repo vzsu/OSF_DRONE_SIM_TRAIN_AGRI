@@ -1,0 +1,32 @@
+{
+  "name": "osf-agri-drone-sim",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "Web-based agricultural drone training simulator with RC transmitter support (Next.js + WASM)",
+  "scripts": {
+    "build:wasm": "node scripts/gen-layout.mjs && asc assembly/index.ts -o public/sim.wasm --optimize --runtime stub --noAssert",
+    "dev": "npm run build:wasm && node server.mjs --dev",
+    "build": "npm run build:wasm && next build",
+    "start": "node server.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run build:wasm && vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.7",
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
+    "assemblyscript": "^0.27.31",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11",
+    "vitest": "^2.1.8"
+  },
+  "dependencies": {
+    "@types/three": "^0.170.0",
+    "next": "^15.1.6",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "selfsigned": "^2.4.1",
+    "three": "^0.170.0"
+  }
+}
