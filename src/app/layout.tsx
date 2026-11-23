@@ -1,6 +1,15 @@
 import type { Metadata, Viewport } from 'next';
+import { Bricolage_Grotesque, Instrument_Sans, JetBrains_Mono } from 'next/font/google';
 import 'leaflet/dist/leaflet.css';
 import './globals.css';
+
+// Google font pairing, self-hosted by next/font at build time (works offline on the LAN):
+// Bricolage Grotesque — characterful display face for headings and big numbers
+// Instrument Sans — clean, compact UI text
+// JetBrains Mono — telemetry, coordinates, tabular readouts
+const display = Bricolage_Grotesque({ subsets: ['latin'], variable: '--font-display', display: 'swap', weight: ['500', '700', '800'] });
+const sans = Instrument_Sans({ subsets: ['latin'], variable: '--font-sans', display: 'swap', weight: ['400', '500', '600', '700'] });
+const mono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono', display: 'swap', weight: ['400', '600'] });
 
 export const metadata: Metadata = {
   title: 'OSF Agri Flight Trainer',
@@ -10,7 +19,7 @@ export const viewport: Viewport = { width: 'device-width', initialScale: 1 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${display.variable} ${sans.variable} ${mono.variable}`}>
       <body>{children}</body>
     </html>
   );

@@ -4,6 +4,8 @@ import { settings } from '../settings';
 import { FIELD, TREES, POLES, HOUSE, HOME, BOXES, CROWD, WORLD } from '../data/world';
 import { GRID } from '../sim/coverage';
 import { planLanes } from '../sim/mission';
+import { pulse } from './motion';
+import gsap from 'gsap';
 
 const $ = (id: string) => document.getElementById(id)!;
 const WARN_TEXT: [number, string][] = [
@@ -85,6 +87,7 @@ export class Hud {
       <div class="help" id="h-help">Esc pause · V view · keyboard: W/S thr · A/D yaw · arrows pitch/roll · Enter arm · 1 STAB 2 ALT HOLD 3 LOITER · Space spray · [ ] pump · K E-stop · R RTL · 4 AUTO · M map · B battery/refill · Backspace reset · camera drones: C record, PgUp/PgDn gimbal</div>
     `;
     this.mini = $('h-mini') as HTMLCanvasElement;
+    gsap.set($('h-warn'), { xPercent: -50, x: 0 }); // centred via GSAP so pulses keep it centred
     this.covCanvas.width = GRID.w; this.covCanvas.height = GRID.h;
   }
 
@@ -159,7 +162,9 @@ export class Hud {
     if (e.sticks.kill) msgs.unshift('EMERGENCY STOP SWITCH ON');
     if (this.overCrowd) msgs.unshift('OVER PEOPLE — MOVE AWAY');
     this.cameraOsd(e, now);
-    const wb = $('h-warn'); wb.style.display = msgs.length ? 'block' : 'none'; wb.textContent = msgs.slice(0, 3).join(' · ');
+    const wb = $('h-warn'); const wt = msgs.slice(0, 3).join(' · ');
+    if (wt && wt !== wb.textContent) pulse(wb, true);
+    wb.style.display = msgs.length ? 'block' : 'none'; wb.textContent = wt;
     // sticks (Mode 2: left = yaw/throttle, right = roll/pitch; Mode 1 swaps throttle/pitch sides)
     const s = e.sticks;
     $('h-sticks').style.display = settings.display.showSticks ? 'flex' : 'none';

@@ -33,6 +33,8 @@ export interface Settings {
   /** training ground: a named place id, or 'custom' with category + seed */
   place: { id: string; category: 'agri' | 'wedding'; seed: number };
   trainee: string;
+  lesson?: string | null; checkride?: boolean;
+  lessonBest?: Record<string, { passed: boolean; time: number; checkride: boolean; at: string }>;
   chargeMinutes?: number; // charger 0→100 % time (training default 6, real 30–60)
   keys: Record<string, string>; // keyboard bindings: action → KeyboardEvent.code
   sv?: number; // settings schema version

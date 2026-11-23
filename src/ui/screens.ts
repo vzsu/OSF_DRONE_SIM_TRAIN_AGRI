@@ -6,6 +6,7 @@ import { PLACES } from '../data/world';
 import { CROPS, GRASSES } from '../data/crops';
 import { KEY_ACTIONS, keyOf, keyLabel, bindKey, resetKeys } from '../input/keys';
 import { setCaptureKey } from '../input/input';
+import { enterScreen, popIn, countUp, growBars } from './motion';
 import { currentUser, offline } from '../auth/client';
 import { settings, saveSettings, profileFor, defaultProfile, exportJson, downloadBlob, STICK_FUNCS, SWITCH_FUNCS, type Func, type Src, type ControllerProfile } from '../settings';
 import { listPads, activePad, KEYBOARD_ID, normStick, normThrottle, readSrc, readSticks, type RawPad, type Sticks } from '../input/input';
@@ -28,7 +29,9 @@ export const backTarget = () => back.target;
 export function mount(html: string): HTMLElement {
   stopLoop();
   ui().innerHTML = `<div class="screen"><div class="wrap">${html}</div></div>`;
-  return ui().firstElementChild as HTMLElement;
+  const el = ui().firstElementChild as HTMLElement;
+  enterScreen(el);
+  return el;
 }
 export const header = (title: string) => `<div class="row spread" style="margin-bottom:16px"><h1>${title}</h1><button data-nav="${back.target}">${back.label}</button></div>`;
 export function wireNav(root: HTMLElement, nav: Nav) {
@@ -46,8 +49,9 @@ export function homeScreen(nav: Nav) {
     </div>
     <div class="row" style="align-items:flex-start;gap:28px">
       <div class="menu">
-        <button class="primary" data-nav="fly">▶ Fly — ${esc(d.name)}</button>
+        <button class="primary" data-nav="freefly">▶ Fly — ${esc(d.name)}</button>
         <button data-nav="drone">Select drone</button>
+        <button data-nav="lessons">Lessons &amp; checkride</button>
         <button data-nav="realmap">Real map — Chhattisgarh</button>
         <button data-nav="mission">Mission planner (AUTO spray)</button>
         <button data-nav="env">Environment &amp; weather</button>
@@ -373,6 +377,7 @@ function alertBox(msg: string) {
   d.innerHTML = `<div class="card"><p>${esc(msg)}</p><button>OK</button></div>`;
   d.querySelector('button')!.onclick = () => d.remove();
   ui().appendChild(d);
+  popIn(d);
 }
 
 // ---- calibration wizard ----
@@ -382,6 +387,7 @@ export function calibrationWizard(deviceId: string, done: () => void) {
   box.innerHTML = `<div class="card wizard"><h2>Controller calibration</h2><div id="w-body"></div>
     <div class="row" style="margin-top:14px"><button id="w-next" class="primary">Next</button><button id="w-skip">Skip this step</button><button id="w-cancel">Cancel</button></div></div>`;
   ui().appendChild(box);
+  popIn(box);
   const body = box.querySelector<HTMLElement>('#w-body')!;
   const get = () => listPads().find((p) => p.id === deviceId);
   let rest: number[] = [], restB: boolean[] = [], mins: number[] = [], maxs: number[] = [];
@@ -513,7 +519,7 @@ export function debriefScreen(nav: Nav, log: FlightLog) {
         <span>Warnings</span><span>${s.warnings}</span><span>Controller</span><span>${esc(log.header.controller)}</span>
       </div>
       <div class="row" style="margin-top:12px"><button class="primary" data-nav="fly">Fly again</button><button id="csv">Export CSV</button><button id="json">Export JSON</button></div></div>
-      ${scoreCard(log.training)}
+      ${lessonCardHtml(log)}${scoreCard(log.training)}
       <div class="card"><h3>Events</h3><div style="max-height:260px;overflow:auto"><table>${log.events.map((e) => `<tr><td style="font-family:var(--mono)">${e.t.toFixed(1)} s</td><td>${esc(e.text)}</td></tr>`).join('') || '<tr><td class="muted">No events</td></tr>'}</table></div></div>
     </div>
     <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(420px,1fr));margin-top:12px">
@@ -523,6 +529,7 @@ export function debriefScreen(nav: Nav, log: FlightLog) {
       <div class="card"><h3>Stick inputs: throttle · roll · pitch · yaw</h3><canvas class="chart" id="c-stk"></canvas></div>
     </div>`);
   wireNav(root, nav);
+  { const sb = root.querySelector<HTMLElement>('.score-big'); if (sb) countUp(sb, +(sb.textContent ?? 0)); growBars(root.querySelectorAll<HTMLElement>('.score-bar > i')); }
   const t = column(log, 't');
   const wx = column(log, 'wind_x'), wy = column(log, 'wind_y');
   const wind = wx.map((v, i) => Math.hypot(v, wy[i]));
@@ -533,6 +540,14 @@ export function debriefScreen(nav: Nav, log: FlightLog) {
   const base = `flight-${log.header.trainee.replace(/\W+/g, '_')}-${log.header.startedAt.slice(0, 19).replace(/[:T]/g, '-')}`;
   root.querySelector('#csv')!.addEventListener('click', () => downloadBlob(new Blob([toCsv(log)], { type: 'text/csv' }), base + '.csv'));
   root.querySelector('#json')!.addEventListener('click', () => exportJson(toJson(log), base + '.json'));
+}
+
+function lessonCardHtml(log: FlightLog): string {
+  const l = log.header.lesson;
+  if (!l) return '';
+  return `<div class="card lesson-sum ${l.passed ? 'ok' : 'bad'}"><h3>Lesson</h3><div class="row spread"><b>${esc(l.title)}</b><span class="tag">${l.passed ? 'PASSED' : 'FAILED'}</span></div>
+    <p class="small">${Math.floor(l.time / 60)}:${String(Math.floor(l.time % 60)).padStart(2, '0')}${l.checkride ? ' · checkride' : ''}${l.failure ? ` · injected ${esc(l.failure)} failure` : ''}${l.reason ? ` · ${esc(l.reason)}` : ''}</p>
+    ${l.objectives.map((o) => `<div class="small">${o.done ? '✓' : '○'} ${esc(o.text)}</div>`).join('')}</div>`;
 }
 
 function scoreCard(tr?: TrainingData): string {

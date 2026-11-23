@@ -45,7 +45,20 @@ export function findSun(tex: THREE.DataTexture): THREE.Vector3 {
   return new THREE.Vector3(Math.cos(el) * Math.cos(az), Math.sin(el), Math.cos(el) * Math.sin(az)).normalize();
 }
 
-export interface LoadedEnv { skybox: GroundedSkybox; envMap: THREE.Texture; sunDir: THREE.Vector3; sunElevation: number }
+export interface LoadedEnv { skybox: GroundedSkybox; envMap: THREE.Texture; sunDir: THREE.Vector3; sunElevation: number; horizon: THREE.Color }
+
+/** Average colour just above the horizon (for haze that matches the photo). */
+function horizonColour(tex: THREE.DataTexture): THREE.Color {
+  const img = tex.image as unknown as { data: Float32Array; width: number; height: number };
+  const { data, width: W, height: H } = img;
+  let r = 0, g = 0, b = 0, n = 0;
+  for (let row = Math.floor(H * 0.46); row < Math.floor(H * 0.49); row++) for (let c = 0; c < W; c += 8) {
+    const i = (row * W + c) * 4; r += data[i]; g += data[i + 1]; b += data[i + 2]; n++;
+  }
+  const col = new THREE.Color(r / n, g / n, b / n);
+  const m = Math.max(col.r, col.g, col.b, 1e-3);
+  return col.multiplyScalar(Math.min(1, 0.85 / m)); // normalise HDR brightness to a usable fog colour
+}
 
 export async function loadHdri(renderer: THREE.WebGLRenderer, id: string, hd: boolean): Promise<LoadedEnv> {
   const info = HDRIS.find((h) => h.id === id) ?? HDRIS[0];
@@ -58,5 +71,6 @@ export async function loadHdri(renderer: THREE.WebGLRenderer, id: string, hd: bo
   // radius large enough that the field and power line sit well inside the projected ground
   const skybox = new GroundedSkybox(tex, info.captureHeight * 6, 900, 160);
   skybox.position.y = info.captureHeight * 6 - 0.02;
-  return { skybox, envMap, sunDir, sunElevation: Math.asin(sunDir.y) };
+  (skybox.material as THREE.Material & { fog?: boolean }).fog = false; // the photo already contains the real haze
+  return { skybox, envMap, sunDir, sunElevation: Math.asin(sunDir.y), horizon: horizonColour(tex) };
 }

@@ -231,6 +231,25 @@ All sources are free and need no API key: Esri World Imagery, OpenStreetMap, Ove
 
 Go to **Settings → Keyboard shortcuts**, click an action and press the new key. A key already used by another action is swapped onto that action. *Reset to defaults* restores the original keys. RC sticks, switches and buttons are mapped in **Settings → Controller (RC)**.
 
+## 10b. Lessons and checkride
+
+Open **Home → Lessons & checkride**. There are 8 lessons:
+
+1. Take-off, hover and land
+2. ATTI hover in wind (hold assist off)
+3. Box pattern through 4 gates
+4. Nose-in hover
+5. Manual spray lane
+6. Motor-failure emergency
+7. Precision landing
+8. Wedding orbit shot (camera drone)
+
+**During a lesson:** a card at the top lists the objectives with live progress. Gates, boxes and landing targets appear in 3D: green is next, yellow is done. A lesson fails on a crash, a time-out or its own rule (for example, flying over the guests).
+
+**Checkride mode** switches off the trail, ground marker, orientation arrow and hold assist, and injects one random failure: GPS loss, motor failure or RC loss.
+
+**Results:** they go into the flight log and the debrief. Your best result shows on each lesson card. The ▶ Fly button on the home screen is always free flight.
+
 ## 11. Agri spray mission (AUTO) — same as in the field
 
 1. Open **Mission planner** from the home screen or the pause menu.
@@ -306,5 +325,6 @@ After every flight (or *End flight* in the pause menu) the debrief shows:
 | Server closes by itself | The PC is low on memory — close other programs |
 | Phone can't open the QR address | Same Wi-Fi/hotspot as the PC; run `start-sim.cmd -SetupFirewall` once (covers Public networks now); a flight must be running |
 | Real map build fails | Internet needed the first time (cached afterwards); the Overpass server is sometimes busy — try again in a minute |
+| Blank screen / "3D graphics are off" | The browser's GPU is off: close heavy programs, restart Chrome, turn on hardware acceleration |
 | No voice | Settings → Display, sound & aids → Voice prompts. Windows needs an English speech voice installed |
 | Forgot the admin password | Stop the server, delete `data/users.json` (removes **all** accounts), start again: a new admin password is written to `data/ADMIN_FIRST_LOGIN.txt` |

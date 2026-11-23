@@ -5,6 +5,8 @@
 import type { Telemetry, GcsCmd, WorldGeo } from './host';
 import { toLatLon } from './host';
 import { planLanes, missionStats, polyArea, type MissionPlan, type Pt } from '../sim/mission';
+import gsap from 'gsap';
+import { sheet, pulse } from '../ui/motion';
 
 export interface GcsLink { tel(): Telemetry | null; world(): WorldGeo | null; send(c: GcsCmd): Promise<string> | string; video?: () => HTMLCanvasElement | HTMLImageElement | null }
 
@@ -56,6 +58,7 @@ export class GcsUI {
         </div>
       </div>`;
     container.appendChild(this.root);
+    if (embedded) gsap.set(this.root, { xPercent: -50, yPercent: 104 });
     this.map = this.root.querySelector('.gcs-map')!;
     this.root.querySelectorAll<HTMLButtonElement>('[data-z]').forEach((b) => (b.onclick = () => {
       const z = b.dataset.z;
@@ -355,7 +358,9 @@ export class GcsUI {
     if (t.checks.length) ck.innerHTML = `<b>Pre-flight check</b>${t.checks.map((c) => `<div class="ck ${c.state}"><span>${c.state === 'ok' ? '✓' : c.state === 'fail' ? '✗' : '…'}</span>${esc(c.name)}<em>${esc(c.text)}</em></div>`).join('')}`;
     const mg = this.root.querySelector<HTMLElement>('#g-msg')!;
     const show = this.msg && performance.now() - this.msgAt < 5000;
+    const wasShown = mg.style.display === 'block';
     mg.style.display = show ? 'block' : 'none'; mg.textContent = show ? this.msg : ''; mg.className = 'gcs-msg' + (this.msgBad ? ' bad' : '');
+    if (show && !wasShown) pulse(mg, this.msgBad);
   }
 
   private bindSlider() {
@@ -385,7 +390,7 @@ export class GcsUI {
       const tabs: [string, string][] = kind === 'cam' ? [['camera', 'Camera'], ['fly', 'Flight'], ['battery', 'Battery']] : [['plan', 'Plan'], ['fly', 'Fly'], ['battery', 'Battery']];
       const tb = this.root.querySelector<HTMLElement>('#g-tabs')!;
       tb.innerHTML = tabs.map(([k, l]) => `<button data-t="${k}">${l}</button>`).join('');
-      tb.querySelectorAll<HTMLButtonElement>('[data-t]').forEach((b) => (b.onclick = () => { this.tab = b.dataset.t as typeof this.tab; this.renderPanel(true); }));
+      tb.querySelectorAll<HTMLButtonElement>('[data-t]').forEach((b) => (b.onclick = () => { this.tab = b.dataset.t as typeof this.tab; this.renderPanel(true); gsap.fromTo(this.root.querySelector('#g-panel'), { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.35, ease: 'expo.out' }); }));
       this.fitted = ''; this.renderPanel(true);
     }
     if (kind === 'cam') this.cameraView(t);
@@ -405,8 +410,8 @@ export class GcsUI {
     this.root.querySelector<HTMLElement>('#g-gim')!.style.top = `${((20 - c.gimbal) / 110 * 100).toFixed(0)}%`;
   }
 
-  open(tab?: 'plan' | 'fly' | 'battery' | 'camera') { if (tab) this.tab = tab; this.root.classList.add('open'); this.renderPanel(true); }
-  close() { this.root.classList.remove('open'); (document.activeElement as HTMLElement | null)?.blur(); }
+  open(tab?: 'plan' | 'fly' | 'battery' | 'camera') { if (tab) this.tab = tab; const was = this.isOpen(); this.root.classList.add('open'); this.renderPanel(true); if (this.embedded && !was) sheet(this.root, true); }
+  close() { if (this.embedded && this.isOpen()) sheet(this.root, false); this.root.classList.remove('open'); (document.activeElement as HTMLElement | null)?.blur(); }
   isOpen() { return this.root.classList.contains('open'); }
   toggle() { if (this.isOpen()) this.close(); else this.open(); }
 }

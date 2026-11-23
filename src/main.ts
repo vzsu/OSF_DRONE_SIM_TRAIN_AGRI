@@ -4,6 +4,9 @@ import { Hud } from './ui/hud';
 import { homeScreen, droneScreen, envScreen, settingsScreen, logsScreen, debriefScreen, setBack } from './ui/screens';
 import { missionScreen } from './ui/mission';
 import { realMapScreen } from './ui/realmap';
+import { popIn, popOut, toastIn, toastOut, bindPressFeedback } from './ui/motion';
+import { LessonRunner, lessonById, LESSONS } from './lessons/lessons';
+import { lessonsScreen, LessonCard, showLessonResult, startLesson } from './ui/lessonUI';
 import type { WorldDef } from './data/world';
 import { loginScreen, adminScreen } from './ui/account';
 import { me, logout, currentUser, offline } from './auth/client';
@@ -34,6 +37,29 @@ let lastViewPos = -1;
 let pauseEl: HTMLElement | null = null;
 let slowWarned = false;
 const sound = new DroneSound();
+// ---------- lessons + checkride ----------
+const lessons = new LessonRunner();
+const lessonCard = new LessonCard(document.getElementById('hud')!);
+let aidsBackup: { trail: boolean; groundMarker: boolean; orientArrow: boolean } | null = null;
+function restoreAids() { if (aidsBackup) { Object.assign(settings.display, aidsBackup); aidsBackup = null; } }
+lessons.onObjectiveDone = (i) => { lessonCard.objectiveDone(i); sound.beep(1760, 2, 0.05); speak('Objective complete', 1500); };
+lessons.onFinish = (r) => {
+  engine.recorder.header.lesson = { ...r, objectives: r.objectives.map((o) => ({ text: o.text, done: o.done })) };
+  if (r.passed) {
+    const b = settings.lessonBest ?? (settings.lessonBest = {});
+    const prev = b[r.id];
+    if (!prev?.passed || r.time < prev.time) b[r.id] = { passed: true, time: r.time, checkride: r.checkride, at: new Date().toISOString() };
+  } else if (!(settings.lessonBest ?? {})[r.id]) (settings.lessonBest ??= {})[r.id] = { passed: false, time: r.time, checkride: r.checkride, at: new Date().toISOString() };
+  saveSettings();
+  speak(r.passed ? 'Lesson passed. Well done' : `Lesson failed. ${r.reason}`, 0);
+  sound.beep(r.passed ? 1320 : 400, r.passed ? 3 : 2, 0.1);
+  const idx = LESSONS.findIndex((l) => l.id === r.id);
+  const next = r.passed && LESSONS[idx + 1] ? LESSONS[idx + 1] : null;
+  setTimeout(() => showLessonResult(r, {
+    retry: () => void startFlight(), debrief: () => void endFlight(), menu: () => { flying = false; restoreAids(); nav('lessons'); },
+    next: next ? () => { flying = false; startLesson(next, nav); } : null,
+  }), r.passed ? 600 : 900);
+};
 // ---------- ground-station tablet (slides up from the bottom; same UI on LAN devices) ----------
 const gcsHost = new GcsHost(engine, {
   beep: (f, n, len) => sound.beep(f, n, len), toast: (t, bad) => toast(t, bad),
@@ -69,7 +95,8 @@ function toast(text: string, bad = false) {
   const d = document.createElement('div');
   d.textContent = text; if (bad) d.className = 'bad';
   toasts.appendChild(d);
-  setTimeout(() => d.remove(), 4000);
+  toastIn(d);
+  setTimeout(() => toastOut(d), 4000);
   while (toasts.children.length > 5) toasts.firstElementChild!.remove();
 }
 
@@ -109,6 +136,7 @@ async function applyPlace(): Promise<void> {
 
 function nav(screen: string, arg?: unknown) {
   closePause();
+  if (screen === 'freefly') { settings.lesson = null; saveSettings(); screen = 'fly'; }
   if (screen === 'fly') { if (!currentUser && !offline) { loginScreen(nav); return; } void startFlight(); return; }
   if (screen === 'resume' && flying) {
     // back from settings / mission planner opened in the pause menu
@@ -121,7 +149,7 @@ function nav(screen: string, arg?: unknown) {
   gcs.close();
   const keep = flying && (screen === 'settings' || screen === 'mission');
   if (keep) { engine.paused = true; setBack('resume', '← Back to flight'); }
-  else { flying = false; setBack('home', '← Home'); }
+  else { flying = false; setBack('home', '← Home'); restoreAids(); }
   hud.show(false);
   if (screen === 'logout') { void logout().then(() => loginScreen(nav)); return; }
   // students and instructors must sign in (unless the server is unreachable → local practice)
@@ -133,6 +161,7 @@ function nav(screen: string, arg?: unknown) {
   else if (screen === 'settings') settingsScreen(nav);
   else if (screen === 'mission') missionScreen(nav);
   else if (screen === 'realmap') realMapScreen(nav);
+  else if (screen === 'lessons') { restoreAids(); lessonsScreen(nav); }
   else if (screen === 'logs') logsScreen(nav);
   else if (screen === 'debrief') debriefScreen(nav, arg as FlightLog);
 }
@@ -150,7 +179,17 @@ function reloadMission() {
 
 async function startFlight() {
   await applyPlace();
-  engine.start(settings.droneId, settings.env);
+  const lesson = lessonById(settings.lesson);
+  const env = { ...settings.env };
+  if (lesson) { if (lesson.holdAssist !== undefined) env.holdAssist = lesson.holdAssist; if (lesson.wind !== undefined) env.windSpd = lesson.wind; }
+  if (lesson && settings.checkride) {
+    // checkride: aids off (restored when leaving the lesson)
+    if (!aidsBackup) aidsBackup = { trail: settings.display.trail, groundMarker: settings.display.groundMarker, orientArrow: settings.display.orientArrow };
+    Object.assign(settings.display, { trail: false, groundMarker: false, orientArrow: false }); env.holdAssist = false;
+  } else restoreAids();
+  engine.start(settings.droneId, env);
+  lessons.start(lesson, engine, !!settings.checkride);
+  if (lesson) toast(`Lesson ${lesson.n}: ${lesson.title} — ${lesson.brief}`);
   if (!viewsFor().includes(settings.camera.view)) settings.camera.view = 'vlos';
   world.setDrone(engine.drone);
   void world.setEnvironment(settings.env.hdri, settings.env.timeOfDay);
@@ -197,7 +236,7 @@ engine.onEvent = (code, text) => {
 };
 
 // ---------- pause menu (live environment + failure injection) ----------
-function closePause() { pauseEl?.remove(); pauseEl = null; engine.paused = false; }
+function closePause() { if (pauseEl) popOut(pauseEl); pauseEl = null; engine.paused = false; }
 function openPause() {
   if (!flying || pauseEl) return;
   engine.paused = true;
@@ -228,6 +267,7 @@ function openPause() {
         <p class="small muted">Compass error causes "toilet-bowl" circling in LOITER. GPS loss drops LOITER to ALT HOLD, and the drone drifts with the wind.</p></div>
     </div></div>`;
   uiEl.appendChild(pauseEl);
+  popIn(pauseEl);
   const q = <T extends HTMLElement>(id: string) => pauseEl!.querySelector<T>('#' + id)!;
   q('p-res').onclick = closePause;
   q('p-rst').onclick = () => { closePause(); startFlight(); };
@@ -289,7 +329,11 @@ function frame(now: number) {
     const cp = world.camera.position;
     sound.update(engine, { x: cp.x, y: -cp.z, z: cp.y }, dt);
     hud.update(engine, now);
+    document.body.classList.toggle('flying', !engine.paused && settings.camera.view !== 'top');
     linkHost.tick(now);
+    lessons.update(engine, engine.paused ? 0 : dt);
+    lessonCard.update(lessons);
+    world.setMarkers(lessons.def ? lessons.markers : [], world.drone?.group.position);
     gcsBtn.style.display = gcs.isOpen() ? 'none' : 'block';
     if (engine.o('CRASHED') > 0.5) { crashTimer += dt; if (crashTimer > 3) endFlight(); }
     // slow PC warning: sustained low frame rate makes the controls feel laggy
@@ -298,6 +342,7 @@ function frame(now: number) {
       toast(`Low frame rate (${Math.round(1000 / engine.frameMs)} fps) — controls will feel laggy. Try Settings → Display → Low, or the Simple sky environment.`, true);
     }
   } else {
+    document.body.classList.remove('flying');
     gcsBtn.style.display = 'none';
     sound.silence();
     // idle background: slow orbit over the farm
@@ -328,5 +373,6 @@ let booted = false;
 export function startApp() {
   if (booted) return;
   booted = true;
+  bindPressFeedback();
   boot().catch((err) => { uiEl.innerHTML = `<div class="screen"><div class="wrap"><h1>Failed to start</h1><pre>${String(err)}</pre></div></div>`; console.error(err); });
 }

@@ -96,6 +96,10 @@ Update the checklist and the log at the end of every work block.
 - [x] Real maps (Chhattisgarh): Leaflet picker on Esri satellite / OSM, Nominatim search, Overpass → trees/buildings/power lines/farmland, satellite ground; saved maps + weather; tile/OSM disk cache
 - [x] HUD: height above ground / crop / take-off / MSL, vertical-speed arrows, altitude tape; clean glass HUD; neo-brutalist menus
 - [ ] Browser test of v0.6 (skipped: 626 MB free RAM) — relay, tiles, search, Overpass smoke-tested with curl
+### P13 v0.7 (2026-11-23)
+- [x] GSAP motion system, Google fonts via next/font (offline), cheap realism (AgX, anti-tiling, contact shadow, tree AO, haze, CSS lens)
+- [x] Lessons + checkride (8 lessons, live objectives, 3D markers, results in logs/debrief), tests
+- [x] WebGL-unavailable fallback screen
 ### Next (not started)
 - [ ] Owner hardware check: fly with the real Pocket and tune feel (expo, rates, `resp`, `tauMotor`)
 - [ ] Real AG365XP spec sheet → `src/data/drones.ts`
@@ -120,7 +124,10 @@ Update the checklist and the log at the end of every work block.
 
 - 2026-11-23: v0.6 (P12). 51 tests green, build clean.
 
+- 2026-11-23: v0.7 (P13). 53 tests green, build clean.
+
 ## Lessons / working rules (grow this list)
+- A WebGL context failure used to leave a blank page: the page now tests WebGL before importing the sim. Chrome disables the GPU process when memory runs out.
 - Phones on hotspots: WebRTC host candidates are mDNS-obfuscated and the Windows profile is Public → use an HTTP relay (SSE + MJPEG) through the server; it always works if the port is reachable.
 - Check the Windows network category (Get-NetConnectionProfile) when LAN devices can't connect; a Private-only firewall rule silently fails on Public networks.
 - "Drift in hold" complaints: first check the default weather preset — the default had wind on. Physics was right for ATTI; product default was wrong.

@@ -131,6 +131,9 @@ export class World3D {
   private pGeo = new THREE.BufferGeometry();
   private pts!: THREE.Points;
   private hq = settings.display.quality === 'high';
+  private lessonGroup = new THREE.Group();
+  private lessonMeshes: THREE.Object3D[] = [];
+  private contact = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: aoTexture(), transparent: true, depthWrite: false, color: 0x000000 }));
   // training ground (rebuilt when the place changes)
   private site = new THREE.Group();
   private siteKey = '';
@@ -160,8 +163,8 @@ export class World3D {
   constructor(canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, this.hq ? 1.5 : 1));
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 0.9;
+    this.renderer.toneMapping = THREE.AgXToneMapping;
+    this.renderer.toneMappingExposure = 1.05;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.shadowMap.enabled = this.hq;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -199,7 +202,8 @@ export class World3D {
     this.scene.add(env.skybox);
     this.scene.environment = env.envMap;
     this.scene.background = null;
-    this.scene.fog = null;
+    // aerial perspective: distant crops/trees fade into the photographed horizon colour
+    this.scene.fog = new THREE.FogExp2(env.horizon, 0.0016);
     this.hemi.visible = false;
     this.proceduralGround.visible = false; this.nearGrass.visible = true; this.shadowCatcher.visible = true;
     // the sun light matches the photographed sun so shadows agree with the scan
@@ -225,13 +229,13 @@ export class World3D {
   private buildWorld() {
     const s = this.scene;
     // procedural fallback ground
-    this.proceduralGround = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000), new THREE.MeshStandardMaterial({ map: tex('/tex/aerial_grass_rock_diff.jpg', 400, true), roughness: 1 }));
+    this.proceduralGround = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000), antiTile(new THREE.MeshStandardMaterial({ map: tex('/tex/aerial_grass_rock_diff.jpg', 400, true), roughness: 1 })));
     this.proceduralGround.rotation.x = -Math.PI / 2; this.proceduralGround.receiveShadow = true; s.add(this.proceduralGround);
     // near-ground grass that fades into the HDRI ground
-    this.nearGrass = new THREE.Mesh(new THREE.CircleGeometry(160, 64), new THREE.MeshStandardMaterial({
+    this.nearGrass = new THREE.Mesh(new THREE.CircleGeometry(160, 64), antiTile(new THREE.MeshStandardMaterial({
       map: tex('/tex/aerial_grass_rock_diff.jpg', 40, true), normalMap: tex('/tex/aerial_grass_rock_nor.jpg', 40, false),
       alphaMap: radialMask(), transparent: true, roughness: 1, depthWrite: false,
-    }));
+    })));
     this.nearGrass.rotation.x = -Math.PI / 2; this.nearGrass.position.copy(v3(0, 40, 0.01)); this.nearGrass.receiveShadow = true; this.nearGrass.renderOrder = 1;
     this.nearGrass.visible = false; s.add(this.nearGrass);
     // invisible plane that only shows shadows (over the HDRI ground)
@@ -262,6 +266,9 @@ export class World3D {
     // pad
     const pad = new THREE.Mesh(new THREE.CircleGeometry(2.2, 48), new THREE.MeshStandardMaterial({ map: padTexture(), roughness: 0.85 }));
     pad.rotation.x = -Math.PI / 2; pad.rotation.z = -HOME.yaw + Math.PI / 2; pad.position.copy(v3(HOME.x, HOME.y, 0.045)); pad.receiveShadow = true; pad.renderOrder = 4; s.add(pad);
+    s.add(this.lessonGroup);
+    // contact shadow under the drone
+    this.contact.rotation.x = -Math.PI / 2; this.contact.renderOrder = 4; s.add(this.contact);
     // training aids
     this.marker = new THREE.Mesh(new THREE.RingGeometry(0.5, 0.65, 32), new THREE.MeshBasicMaterial({ color: 0xffe14d, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false }));
     this.marker.rotation.x = -Math.PI / 2; this.marker.renderOrder = 5; s.add(this.marker);
@@ -283,6 +290,31 @@ export class World3D {
     this.pts.frustumCulled = false;
     for (let i = 0; i < this.N; i++) this.pPos[i * 3 + 1] = -100;
     s.add(this.pts);
+  }
+
+  /** Lesson gates / boxes / landing targets / orbit subject (rebuilt when the list changes). */
+  setMarkers(list: { x: number; y: number; z: number; r: number; kind: string; state: string }[], dronePos?: THREE.Vector3) {
+    if (this.lessonMeshes.length !== list.length) {
+      this.lessonGroup.clear(); this.lessonMeshes = [];
+      for (const m of list) {
+        const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, depthWrite: false, fog: false });
+        let o: THREE.Object3D;
+        if (m.kind === 'gate') o = new THREE.Mesh(new THREE.TorusGeometry(m.r, 0.07, 8, 48), mat);
+        else if (m.kind === 'pad') { o = new THREE.Mesh(new THREE.RingGeometry(m.r * 0.85, m.r, 48), mat); o.rotation.x = -Math.PI / 2; }
+        else if (m.kind === 'poi') { o = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 12, 8), mat); }
+        else o = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(m.r * 2, 1, m.r * 2)), new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, fog: false }));
+        o.renderOrder = 7; this.lessonGroup.add(o); this.lessonMeshes.push(o);
+      }
+    }
+    const t = performance.now() / 1000;
+    list.forEach((m, i) => {
+      const o = this.lessonMeshes[i];
+      o.position.copy(v3(m.x, m.y, m.kind === 'pad' ? 0.07 : m.kind === 'poi' ? 6 : m.z));
+      const col = m.state === 'next' ? 0x3bceac : m.state === 'done' ? 0xffd23f : 0xffffff;
+      const mat = (o as THREE.Mesh).material as THREE.MeshBasicMaterial;
+      mat.color.setHex(col); mat.opacity = m.state === 'idle' ? 0.35 : 0.6 + 0.35 * Math.sin(t * 4);
+      if (m.kind === 'gate' && dronePos) o.lookAt(dronePos.x, o.position.y, dronePos.z); // gates face the drone
+    });
   }
 
   /** Rebuild the training ground after setWorld() (new place / category). */
@@ -324,7 +356,7 @@ export class World3D {
     } else if (WORLD.category === 'agri') {
       // field: ploughed soil + instanced crop rows + bunds
       const crop = cropById(settings.env.crop);
-      const soil = new THREE.Mesh(new THREE.PlaneGeometry(fw, fh), new THREE.MeshStandardMaterial({
+      const soil = new THREE.Mesh(new THREE.PlaneGeometry(fw, fh), antiTileM({
         map: tex('/tex/brown_mud_dry_diff.jpg', 25, true), normalMap: tex('/tex/brown_mud_dry_nor.jpg', 25, false), roughness: 0.95,
         color: new THREE.Color(crop.soil).lerp(new THREE.Color(0xffffff), 0.45),
       }));
@@ -408,7 +440,7 @@ export class World3D {
   private buildWedding(addBox: (x: number, y: number, w: number, d: number, h: number, m: THREE.Material, z0?: number) => THREE.Mesh) {
     const s = this.site;
     const fw = FIELD.x1 - FIELD.x0, fh = FIELD.y1 - FIELD.y0;
-    const lawn = new THREE.Mesh(new THREE.PlaneGeometry(fw, fh), new THREE.MeshStandardMaterial({
+    const lawn = new THREE.Mesh(new THREE.PlaneGeometry(fw, fh), antiTileM({
       map: tex('/tex/aerial_grass_rock_diff.jpg', 12, true), color: 0x8fcf6a, roughness: 0.95,
     }));
     lawn.rotation.x = -Math.PI / 2; lawn.position.copy(v3((FIELD.x0 + FIELD.x1) / 2, (FIELD.y0 + FIELD.y1) / 2, 0.03)); lawn.receiveShadow = true; lawn.renderOrder = 3; s.add(lawn);
@@ -542,6 +574,11 @@ export class World3D {
     });
     leaves.castShadow = true;
     this.site.add(leaves);
+    // soft ambient-occlusion pools under every crown (one instanced quad each)
+    const ao = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: aoTexture(), transparent: true, depthWrite: false, color: 0x000000, opacity: 0.5 }), TREES.length);
+    const am = new THREE.Matrix4();
+    TREES.forEach((t, i) => { const p2 = v3(t.x, t.y, 0.05); am.makeScale(t.crownR * 2.6, 1, t.crownR * 2.6).setPosition(p2); ao.setMatrixAt(i, am); });
+    ao.renderOrder = 4; this.site.add(ao);
   }
 
   /** Reset the flight trail (new flight). */
@@ -593,6 +630,14 @@ export class World3D {
     // sun/shadow camera follows the drone
     this.sun.target.position.copy(pos); this.sun.position.copy(pos).add(this.sunOffset);
     // aids
+    {
+      // soft contact shadow / ambient occlusion: darkest on the ground, widens and fades with height
+      const hgt = Math.max(o('Z'), 0), r0 = Math.max(this.droneDef.bodyR, 0.3) * 2.2;
+      this.contact.position.set(pos.x, 0.055, pos.z);
+      this.contact.scale.setScalar(r0 * (1 + hgt * 0.12));
+      (this.contact.material as THREE.MeshBasicMaterial).opacity = 0.62 / (1 + hgt * 0.45);
+      this.contact.visible = hgt < 25;
+    }
     this.marker.visible = settings.display.groundMarker && o('Z') > 0.8;
     this.marker.position.set(pos.x, 0.07, pos.z);
     this.arrow.visible = settings.display.orientArrow;
@@ -748,5 +793,43 @@ export class World3D {
     for (let i = 0; i < this.N; i++) { this.pLife[i] = 0; this.pPos[i * 3 + 1] = -100; }
   }
 }
+
+/** Radial soft-shadow texture (ambient occlusion / contact shadow). */
+let aoTex: THREE.Texture | null = null;
+function aoTexture(): THREE.Texture {
+  if (aoTex) return aoTex;
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d')!;
+  const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grd.addColorStop(0, 'rgba(255,255,255,1)'); grd.addColorStop(0.45, 'rgba(255,255,255,0.55)'); grd.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
+  aoTex = new THREE.CanvasTexture(c);
+  // texture used as alpha: black material, alpha from the gradient
+  return aoTex;
+}
+
+/** Anti-tiling ground shader: blends the texture with a rotated, rescaled copy of itself using a
+ *  low-frequency noise mask, plus subtle macro brightness variation. Kills the visible repeat
+ *  pattern of tiled ground textures for the cost of one extra texture read. */
+function antiTile<T extends THREE.MeshStandardMaterial>(m: T): T {
+  m.onBeforeCompile = (sh) => {
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', `#include <common>
+        float atHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+        float atNoise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+          return mix(mix(atHash(i), atHash(i + vec2(1, 0)), f.x), mix(atHash(i + vec2(0, 1)), atHash(i + vec2(1, 1)), f.x), f.y); }`)
+      .replace('#include <map_fragment>', `
+        #ifdef USE_MAP
+          vec2 atUv = vMapUv;
+          float atN = atNoise(atUv * 0.35);
+          vec2 atUv2 = mat2(0.8, -0.6, 0.6, 0.8) * atUv * 0.61 + vec2(0.37, 0.71);
+          vec4 sampledDiffuseColor = mix(texture2D(map, atUv), texture2D(map, atUv2), smoothstep(0.35, 0.65, atN));
+          sampledDiffuseColor.rgb *= 0.86 + 0.28 * atNoise(atUv * 0.05 + 3.1);
+          diffuseColor *= sampledDiffuseColor;
+        #endif`);
+  };
+  return m;
+}
+const antiTileM = (p: THREE.MeshStandardMaterialParameters) => antiTile(new THREE.MeshStandardMaterial(p));
 
 function metalM() { return new THREE.MeshStandardMaterial({ color: 0x8a8f95, roughness: 0.45, metalness: 0.8 }); }

@@ -5,6 +5,7 @@
 //   • commands from the phone ← SSE /live/<token>/events?role=host → GcsHost.command → ack
 // Pairing: QR code with an unguessable token (shown in the pause menu).
 import type { GcsHost, GcsCmd } from '../gcs/host';
+import { popIn, popOut } from '../ui/motion';
 
 export class LinkHost {
   token = '';
@@ -65,8 +66,9 @@ export class LinkHost {
       </div>
       <button class="primary" id="lk-ok">Done</button></div>`;
     document.body.appendChild(o);
+    popIn(o);
     this.overlay = o;
-    o.querySelector<HTMLButtonElement>('#lk-ok')!.onclick = () => { o.remove(); this.overlay = null; };
+    o.querySelector<HTMLButtonElement>('#lk-ok')!.onclick = () => { popOut(o); this.overlay = null; };
   }
 
   /** Called every frame. `auxFresh` = the aux canvas was redrawn this frame. */
