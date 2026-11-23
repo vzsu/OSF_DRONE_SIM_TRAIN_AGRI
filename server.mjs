@@ -16,12 +16,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import next from 'next';
 import selfsigned from 'selfsigned';
+import { extraRoutes } from './server-live.mjs';
 
 const arg = (name, def) => { const i = process.argv.indexOf(name); return i > 0 ? process.argv[i + 1] : def; };
 const dev = process.argv.includes('--dev');
 const HTTP_PORT = Number(arg('--http-port', process.env.PORT || 3000));
 const HTTPS_PORT = Number(arg('--https-port', process.env.HTTPS_PORT || 3443));
 process.env.HTTPS_PORT = String(HTTPS_PORT); // LAN link API builds the https URLs from it
+process.env.PORT_HTTP = String(HTTP_PORT);
 const HOST = '0.0.0.0';
 
 const VIRTUAL_NIC = /vEthernet|WSL|Hyper-V|VirtualBox|VMware|Docker|vmnet|Loopback/i;
@@ -68,12 +70,14 @@ await app.prepare();
 
 const { all: allIps, real: ips } = lanIPv4();
 const tls = loadOrCreateCert(allIps);
-const handler = (req, res) => handle(req, res);
+const extra = extraRoutes(() => lanIPv4().real);
+const handler = (req, res) => { if (!extra(req, res)) handle(req, res); };
 http.createServer(handler).listen(HTTP_PORT, HOST);
 https.createServer(tls, handler).listen(HTTPS_PORT, HOST);
 
 console.log(`\n  OSF Agri Flight Trainer ${dev ? '(development)' : '(production)'}`);
 console.log(`  This PC:        http://localhost:${HTTP_PORT}`);
 for (const ip of ips) console.log(`  Trainee PCs:    https://${ip}:${HTTPS_PORT}   (accept the certificate warning once)`);
+for (const ip of ips) console.log(`  Phone screen:   scan the QR in the sim (Esc → Phone / tablet screen) or open http://${ip}:${HTTP_PORT}/remote`);
 if (!ips.length) console.log('  No LAN address found — connect this PC to the network.');
 console.log('  Flight logs are saved in ./data/logs\n');

@@ -48,6 +48,7 @@ export function homeScreen(nav: Nav) {
       <div class="menu">
         <button class="primary" data-nav="fly">▶ Fly — ${esc(d.name)}</button>
         <button data-nav="drone">Select drone</button>
+        <button data-nav="realmap">Real map — Chhattisgarh</button>
         <button data-nav="mission">Mission planner (AUTO spray)</button>
         <button data-nav="env">Environment &amp; weather</button>
         <button data-nav="settings">Settings &amp; controller calibration</button>
@@ -61,7 +62,7 @@ export function homeScreen(nav: Nav) {
         <div class="kv">
           <span>Drone</span><span>${esc(d.name)}</span>
           <span>Controller</span><span id="ctl">${pad ? esc(pad.id) : 'Keyboard (no RC detected)'}</span>
-          <span>Ground</span><span>${esc(settings.place.id === 'custom' ? `${settings.place.category} #${settings.place.seed}` : (PLACES.find((p) => p.id === settings.place.id)?.name ?? ''))}</span>
+          <span>Ground</span><span>${esc(settings.place.id.startsWith('map:') ? 'Real map (saved)' : settings.place.id === 'custom' ? `${settings.place.category} #${settings.place.seed}` : (PLACES.find((p) => p.id === settings.place.id)?.name ?? ''))}</span>
           <span>Wind</span><span>${settings.env.windSpd} m/s from ${settings.env.windDir}°</span>
           <span>View</span><span>${settings.camera.view.toUpperCase()}</span>
         </div>
@@ -121,6 +122,7 @@ export function envScreen(nav: Nav) {
     <h3>Training ground</h3>
     <p class="small muted"><b>Agri spray</b>: crop field, bunds, tree lines, power lines — spray missions and manual spraying. <b>Wedding shoot</b>: lawn venue with mandap, stage, shamiana tents, guests (no-fly over people) and string lights between poles — use a DJI camera drone and the CAMERA view. Each place is generated from a seed; "Generate new" makes a fresh layout.</p>
     <div class="grid" style="margin-bottom:8px">${PLACES.map(placeCard).join('')}
+      <div class="card click ${pl.id.startsWith('map:') ? 'sel' : ''}" data-nav="realmap"><div class="row spread"><b>Real map — Chhattisgarh</b><span class="tag">satellite</span></div><div class="small muted">${pl.id.startsWith('map:') ? 'A saved real field is selected. Open to change.' : 'Pick a real field on satellite imagery; trees, buildings and power lines come from OpenStreetMap.'}</div></div>
       <div class="card ${pl.id === 'custom' ? 'sel' : ''}"><b>Generate new place</b><div class="small muted">${pl.id === 'custom' ? `Current: ${pl.category} #${pl.seed}` : 'Random layout'}</div>
         <div class="row" style="margin-top:6px"><button class="small" data-gen="agri">New farm</button><button class="small" data-gen="wedding">New wedding venue</button></div></div></div>
     <label class="small"><input type="checkbox" id="ha" ${settings.env.holdAssist !== false ? 'checked' : ''}> <b>Hold assist</b> — ALT HOLD / ATTI brakes and holds position when sticks are centred (beginner). Switch off to practise real ATTI wind drift.</label>

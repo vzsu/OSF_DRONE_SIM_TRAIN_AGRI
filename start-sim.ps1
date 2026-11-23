@@ -83,18 +83,23 @@ if (-not $Dev) {
 # ---------- 4. Firewall ----------
 Write-Step 'Checking Windows Firewall'
 $rule = Get-NetFirewallRule -DisplayName $RuleName -ErrorAction SilentlyContinue
+# older versions added a Private-only rule; phone hotspots and many Wi-Fi networks are 'Public'
+if ($rule -and ("$($rule.Profile)" -notmatch 'Public|Any')) {
+  if ($SetupFirewall) { $rule = $null } else { Write-Warn2 'Firewall rule only covers Private networks. Run: .\start-sim.ps1 -SetupFirewall' }
+}
 if ($rule) {
   Write-Ok 'Firewall rule present: other PCs on the network can connect'
 } elseif ($SetupFirewall) {
   $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-  $cmd = "New-NetFirewallRule -DisplayName '$RuleName' -Direction Inbound -Action Allow -Protocol TCP -LocalPort $HttpPort,$HttpsPort -Profile Private | Out-Null"
+  # Private + Public (phone hotspots are 'Public'), but only devices on the same local subnet
+  $cmd = "Remove-NetFirewallRule -DisplayName '$RuleName' -ErrorAction SilentlyContinue; New-NetFirewallRule -DisplayName '$RuleName' -Direction Inbound -Action Allow -Protocol TCP -LocalPort $HttpPort,$HttpsPort -Profile Private,Public -RemoteAddress LocalSubnet | Out-Null"
   if ($isAdmin) {
     Invoke-Expression $cmd
   } else {
     Write-Warn2 'Windows will ask for administrator permission once to add the firewall rule...'
     Start-Process powershell -Verb RunAs -Wait -ArgumentList '-NoProfile', '-Command', $cmd
   }
-  if (Get-NetFirewallRule -DisplayName $RuleName -ErrorAction SilentlyContinue) { Write-Ok "Firewall rule added (TCP $HttpPort, $HttpsPort on Private networks)" }
+  if (Get-NetFirewallRule -DisplayName $RuleName -ErrorAction SilentlyContinue) { Write-Ok "Firewall rule added (TCP $HttpPort, $HttpsPort, same-subnet devices, Private + Public networks)" }
   else { Write-Warn2 'Firewall rule was not added. Other PCs may not be able to connect.' }
 } else {
   Write-Warn2 "No firewall rule yet. Only this PC can connect for sure."

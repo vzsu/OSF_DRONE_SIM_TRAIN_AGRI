@@ -185,13 +185,40 @@ Press **G**, or click *Ground station* at the bottom right, and the tablet slide
 
 ## 8. Phone or tablet as the RC screen / camera monitor (LAN)
 
-1. On the simulator PC, signed in, press **Esc → Phone / tablet screen (LAN)**. A 6-digit code and an address appear.
-2. On the phone or tablet (same Wi-Fi), open `https://<server-ip>:3443/remote` and accept the certificate once. Enter the code.
-3. The device then shows:
-   - **Ground station:** the full tablet UI above. Plan the area, slide to start, manage batteries — all from the device.
-   - **Camera:** live video from the drone's own camera (DJI gimbal camera or the agri nose camera) with a small OSD.
+1. **Once on the sim PC:** run `start-sim.cmd -SetupFirewall`. Phone hotspots and many Wi-Fi networks count as **Public** networks in Windows, and the rule now covers them, but only for devices on the same local network.
+2. In flight press **Esc → Phone / tablet screen**. A **QR code** and the address (for example `http://192.168.x.x:3000/remote?t=…`) appear.
+3. Connect the phone to the **same Wi-Fi or hotspot** and scan the QR code. No app, login or certificate is needed.
+4. The phone shows, live:
+   - **Ground station:** the same tablet UI. For agri drones that is the spray app; for DJI camera drones it is the camera app.
+   - **Camera:** the drone's own camera picture.
 
-The video and data go directly between the two devices over the LAN (WebRTC). Several devices can connect at once.
+Everything goes through the training server over plain HTTP: telemetry 10 times a second, and the camera as a ~12 fps picture stream. This is why it works on hotspots where direct peer-to-peer connections fail. Commands from the phone (start, RTH, batteries, area edits) act on the sim immediately.
+
+## 8b. Camera drones (Mavic 3 Pro, Air 3S, Phantom 4 Pro) — a different app
+
+With a DJI camera drone, the ground station becomes a **camera app** in the style of DJI Fly, not the spray app:
+- The **live camera** fills the screen. It shows thirds grid lines, a REC timer, a photo count, H / D / H.S / V.S readouts and a gimbal indicator. Use ⇄ to swap the camera and the map.
+- **Camera tab:**
+  - Photo/Video switch and a big shutter button (a white flash on photos).
+  - Gimbal tilt slider, plus buttons for 0°, −45°, −90° and −15°.
+- **Flight tab:**
+  - A big **height** readout, with height above take-off, altitude MSL, distance, and horizontal/vertical speed.
+  - **Take off** — quick checks, then auto take-off to 1.2 m and hover in P-GPS. **Land**, **Return home**, **Brake**, **Manual**.
+- **Slide to take off** at the bottom.
+
+## 8c. Real maps — Chhattisgarh
+
+Home → **Real map — Chhattisgarh**:
+1. Search for a village or town (free OpenStreetMap search), or pan the satellite map. Switch between Satellite and Streets.
+2. **Click the take-off point (H).** The orange box (160 × 190 m) becomes the training ground.
+3. Pick the **weather** for this map.
+4. Give it a name and press **Build training ground**:
+   - **trees, buildings and power lines** are downloaded from OpenStreetMap;
+   - the **largest mapped farmland** becomes the spray field (otherwise a default area is used, which you can redraw in the planner);
+   - a 400 × 400 m **satellite picture** becomes the ground.
+5. **Fly here** to start. The map is saved on the server for everyone. It appears under *Saved real maps* and as a training-ground card in Environment.
+
+All sources are free and need no API key: Esri World Imagery, OpenStreetMap, Overpass and Nominatim. Downloads are cached in `data/tiles` and `data/osm`, so a place you built before also works offline. Only areas inside Chhattisgarh are allowed. In many villages OpenStreetMap has few buildings or trees mapped; the satellite picture still shows the real place.
 
 ## 9. Crops, grass and realism
 
@@ -277,6 +304,7 @@ After every flight (or *End flight* in the pause menu) the debrief shows:
 | Slow motion / laggy | Keep the sim window in front, Settings → Display → Low, *Simple sky* |
 | Other PCs can't connect | `start-sim.cmd -SetupFirewall`, same network, https address |
 | Server closes by itself | The PC is low on memory — close other programs |
-| Phone shows nothing after the code | Same Wi-Fi network, use the https address, a flight must be running on the simulator, firewall rule set |
+| Phone can't open the QR address | Same Wi-Fi/hotspot as the PC; run `start-sim.cmd -SetupFirewall` once (covers Public networks now); a flight must be running |
+| Real map build fails | Internet needed the first time (cached afterwards); the Overpass server is sometimes busy — try again in a minute |
 | No voice | Settings → Display, sound & aids → Voice prompts. Windows needs an English speech voice installed |
 | Forgot the admin password | Stop the server, delete `data/users.json` (removes **all** accounts), start again: a new admin password is written to `data/ADMIN_FIRST_LOGIN.txt` |

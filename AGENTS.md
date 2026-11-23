@@ -45,7 +45,9 @@ On Windows the user starts everything with `start-sim.cmd` (wraps `start-sim.ps1
 | `src/data/crops.ts` | Crop + grass presets (crop height feeds the radar via `CROP_H` + field bounds params) |
 | `src/input/keys.ts` | Remappable keyboard actions (`settings.keys`); `onKey` delivers ACTION ids, not key codes |
 | `src/audio/voice.ts` | Voice prompts (speechSynthesis), per-event mapping |
-| `src/net/linkHost.ts`, `src/remote/remote.ts`, `src/app/remote/page.tsx`, `src/server/link.ts`, `api/link` | LAN screens: polling signalling mailbox (6-digit code) + WebRTC (aux drone-camera video 640×360@15 + `gcs` data channel) |
+| `server-live.mjs` | Plain-Node routes before Next: `/live/*` phone-screen relay (SSE telemetry/commands + MJPEG camera, QR token), `/tiles/{sat,osm}` tile proxy + disk cache (z≥9 only inside Chhattisgarh), `/geo/search` (Nominatim) and `/geo/osm` (Overpass) proxy + cache |
+| `src/net/linkHost.ts`, `src/remote/remote.ts`, `src/app/remote/page.tsx` | Phone/tablet screen. **No WebRTC** (failed on phone hotspots: mDNS `.local` candidates, Public network). Sim POSTs telemetry 10 Hz + JPEG frames ~12 fps; phone gets SSE + `<img>` MJPEG |
+| `src/maps/osm.ts`, `src/ui/realmap.ts`, `src/server/mapStore.ts`, `api/maps` | Real-map grounds: Leaflet picker, OSM → `WorldDef` (buildings, trees, power lines, farmland `fieldPoly`), satellite ground image, saved in `data/maps` |
 | `tests/*` | `sim` (FC/physics), `mission` (planner, AUTO, breakpoint, score), `world` (every ground), `auth`, `replay` |
 
 ## Rules (learned the hard way — see PROGRESS.md "Lessons")
@@ -68,6 +70,9 @@ On Windows the user starts everything with `start-sim.cmd` (wraps `start-sim.ps1
 11. **Windows shell:** Bash heredocs containing backticks or `${}` inside Python can break. Write patch scripts to the scratchpad with the Write tool. PowerShell `Set-Content` adds a BOM, so use the Write tool for JSON.
 13. The engine's `gcsMode` overrides the RC mode while the tablet runs a mission; any RC mode-switch movement clears it. `requestArm()` pulses the WASM `ARM_CMD` input.
 14. The aux camera for LAN video is rendered into a scissored corner of the main framebuffer and read back before the main render, so it keeps tone mapping; it only runs while a remote peer is connected.
+15. Camera drones (`drone.fc === 'dji'`) get the camera ground-station (`GcsUI.kind === 'cam'`). Auto take-off uses `engine.guided` (AUTO holding a point), then hands over to LOITER (`gcsMode = 2`).
+16. Real-map worlds can have more obstacles than physics slots: `obstacleList()` keeps the 96 nearest to the take-off area.
+17. UI style: menus and screens are neo-brutalist (`.screen`, `.pause` scoped CSS). The HUD and the tablet stay clean and dark — don't mix them.
 12. Keep `MODES` order = WASM mode numbers (0 STAB, 1 ALTHOLD, 2 LOITER, 3 RTL, 4 LAND, 5 AUTO). Event codes ≥ 100 are mode changes.
 
 ## Adding things

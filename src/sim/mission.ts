@@ -3,7 +3,7 @@
 // battery-low or tank-empty → RTL with a BREAKPOINT; after a battery swap / refill the drone
 // flies back to the breakpoint and continues the same lane.
 import type { AutoCmd } from './wasm';
-import { FIELD } from '../data/world';
+import { FIELD, WORLD } from '../data/world';
 
 export type Pt = [number, number];
 
@@ -19,6 +19,7 @@ export interface MissionPlan {
 export interface Leg { a: Pt; b: Pt; spray: boolean; lane: number }
 
 export function defaultPlan(): MissionPlan {
+  if (WORLD?.fieldPoly && WORLD.fieldPoly.length >= 3) return { poly: WORLD.fieldPoly.map((q) => [q[0], q[1]] as Pt), spacing: 4, height: 2.5, speed: 5, angleDeg: null, margin: 2 };
   const f = FIELD ?? { x0: -50, x1: 50, y0: 12, y1: 112 };
   return { poly: [[f.x0 + 5, f.y0 + 5], [f.x1 - 5, f.y0 + 5], [f.x1 - 5, f.y1 - 5], [f.x0 + 5, f.y1 - 5]], spacing: 4, height: 2.5, speed: 5, angleDeg: null, margin: 1 };
 }

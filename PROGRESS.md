@@ -90,6 +90,12 @@ Update the checklist and the log at the end of every work block.
 - [x] Crop presets (paddy…sugarcane, bare) + grass; radar measures above the canopy (WASM CROP_H + field bounds); downwash bending + wind sway shader
 - [x] Remappable keyboard shortcuts (Settings → Keyboard shortcuts)
 - [x] LAN phone/tablet screen: /remote page, 6-digit code, WebRTC drone-camera video + full GCS over a data channel (signalling smoke-tested; browser WebRTC not yet tested on a real phone)
+### P12 v0.6 (2026-11-23)
+- [x] Phone screen rebuilt without WebRTC: QR pairing, HTTP relay (SSE telemetry 10 Hz, MJPEG camera, commands) in server-live.mjs; firewall rule now Private+Public, LocalSubnet (owner's PC is on a phone hotspot = Public)
+- [x] Camera-drone ground station (DJI Fly style): live camera, shutter/record, gimbal, auto take-off/land/RTH
+- [x] Real maps (Chhattisgarh): Leaflet picker on Esri satellite / OSM, Nominatim search, Overpass → trees/buildings/power lines/farmland, satellite ground; saved maps + weather; tile/OSM disk cache
+- [x] HUD: height above ground / crop / take-off / MSL, vertical-speed arrows, altitude tape; clean glass HUD; neo-brutalist menus
+- [ ] Browser test of v0.6 (skipped: 626 MB free RAM) — relay, tiles, search, Overpass smoke-tested with curl
 ### Next (not started)
 - [ ] Owner hardware check: fly with the real Pocket and tune feel (expo, rates, `resp`, `tauMotor`)
 - [ ] Real AG365XP spec sheet → `src/data/drones.ts`
@@ -112,7 +118,11 @@ Update the checklist and the log at the end of every work block.
 
 - 2026-11-22: v0.5 (P11). 50 tests green, build clean, link/auth API smoke-tested.
 
+- 2026-11-23: v0.6 (P12). 51 tests green, build clean.
+
 ## Lessons / working rules (grow this list)
+- Phones on hotspots: WebRTC host candidates are mDNS-obfuscated and the Windows profile is Public → use an HTTP relay (SSE + MJPEG) through the server; it always works if the port is reachable.
+- Check the Windows network category (Get-NetConnectionProfile) when LAN devices can't connect; a Private-only firewall rule silently fails on Public networks.
 - "Drift in hold" complaints: first check the default weather preset — the default had wind on. Physics was right for ATTI; product default was wrong.
 - World data as ES-module `let` bindings + setWorld(): every importer (physics obstacles, HUD, planner, score) follows the new ground with no plumbing.
 - AUTO legs: a multirotor that yaws 180° while already accelerating leaves the lane (1.4 m XTE). Gate lane speed on heading error (turn first, then go) → <0.75 m.

@@ -6,7 +6,7 @@ import type { Telemetry, GcsCmd, WorldGeo } from './host';
 import { toLatLon } from './host';
 import { planLanes, missionStats, polyArea, type MissionPlan, type Pt } from '../sim/mission';
 
-export interface GcsLink { tel(): Telemetry | null; world(): WorldGeo | null; send(c: GcsCmd): Promise<string> | string }
+export interface GcsLink { tel(): Telemetry | null; world(): WorldGeo | null; send(c: GcsCmd): Promise<string> | string; video?: () => HTMLCanvasElement | HTMLImageElement | null }
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 const fmtT = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
@@ -14,13 +14,17 @@ const fmtT = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${St
 export class GcsUI {
   root: HTMLElement;
   private map!: HTMLCanvasElement;
-  private tab: 'plan' | 'fly' | 'battery' = 'plan';
+  private tab: 'plan' | 'fly' | 'battery' | 'camera' = 'plan';
+  private kind: 'agri' | 'cam' | '' = '';
+  private camMode: 'photo' | 'video' = 'video';
+  private swap = false; // camera app: map big, video small
   private view = { cx: 0, cy: 50, scale: 3 }; // metres at centre, px per metre (CSS px)
   private follow = false;
   private edit = true;
   private draft: MissionPlan | null = null; // local edits until pushed
   private drag = -1; private pan: { x: number; y: number; cx: number; cy: number } | null = null;
   private covImg = new Image(); private covSrc = '';
+  private groundImg = new Image(); private groundSrc = '';
   private msg = ''; private msgBad = false; private msgAt = 0;
   private lastPanel = 0; private fitted = '';
   private raf = 0;
@@ -34,13 +38,14 @@ export class GcsUI {
         <div class="gcs-body">
           <div class="gcs-mapwrap"><canvas class="gcs-map"></canvas>
             <div class="gcs-maptools">
-              <button data-z="in">+</button><button data-z="out">−</button><button data-z="fit" title="Fit field">⤢</button><button data-z="follow" title="Follow drone">◎</button>
+              <button data-z="in">+</button><button data-z="out">−</button><button data-z="fit" title="Fit field">⤢</button><button data-z="follow" title="Follow drone">◎</button><button data-z="swap" title="Swap camera / map" class="camonly">⇄</button>
             </div>
+            <div class="gcs-video" id="g-video"><div class="thirds"></div><div class="camosd-top" id="g-camtop"></div><div class="camosd-bot" id="g-cambot"></div><div class="gimbal-ind"><i id="g-gim"></i></div></div>
             <div class="gcs-coord" id="g-coord"></div>
             <div class="gcs-checks" id="g-checks"></div>
           </div>
           <div class="gcs-side">
-            <div class="gcs-tabs"><button data-t="plan">Plan</button><button data-t="fly">Fly</button><button data-t="battery">Battery</button></div>
+            <div class="gcs-tabs" id="g-tabs"></div>
             <div class="gcs-panel" id="g-panel"></div>
             <div class="gcs-msg" id="g-msg"></div>
           </div>
@@ -52,11 +57,10 @@ export class GcsUI {
       </div>`;
     container.appendChild(this.root);
     this.map = this.root.querySelector('.gcs-map')!;
-    this.root.querySelectorAll<HTMLButtonElement>('[data-t]').forEach((b) => (b.onclick = () => { this.tab = b.dataset.t as typeof this.tab; this.renderPanel(true); }));
     this.root.querySelectorAll<HTMLButtonElement>('[data-z]').forEach((b) => (b.onclick = () => {
       const z = b.dataset.z;
       if (z === 'in') this.view.scale *= 1.4; else if (z === 'out') this.view.scale /= 1.4;
-      else if (z === 'fit') { this.fitted = ''; this.follow = false; } else this.follow = !this.follow;
+      else if (z === 'fit') { this.fitted = ''; this.follow = false; } else if (z === 'swap') { this.swap = !this.swap; this.root.classList.toggle('swap', this.swap); this.fitted = ''; } else this.follow = !this.follow;
       b.classList.toggle('on', z === 'follow' && this.follow);
     }));
     this.bindMap();
@@ -108,7 +112,7 @@ export class GcsUI {
         if (Math.hypot(px - this.pan.x, py - this.pan.y) > 4) moved = true;
         this.view.cx = this.pan.cx - (px - this.pan.x) / this.view.scale; this.view.cy = this.pan.cy + (py - this.pan.y) / this.view.scale; this.follow = false;
       }
-      const [x, y] = this.toM(px, py), [la, lo] = toLatLon(x, y);
+      const [x, y] = this.toM(px, py), [la, lo] = toLatLon(x, y, this.link.world()?.geo);
       this.root.querySelector('#g-coord')!.textContent = `${la.toFixed(6)}° N  ${lo.toFixed(6)}° E`;
     });
     m.addEventListener('pointerup', (ev) => {
@@ -143,18 +147,24 @@ export class GcsUI {
     // "satellite" base: dark terrain, field with crop rows, lawn for venues
     g.fillStyle = '#2b3524'; g.fillRect(0, 0, r.width, r.height);
     const [fx0, fy1] = P(w.field.x0, w.field.y1), [fx1, fy0] = P(w.field.x1, w.field.y0);
-    g.fillStyle = w.category === 'wedding' ? '#4f8a3a' : '#556b2c'; g.fillRect(fx0, fy1, fx1 - fx0, fy0 - fy1);
-    if (w.category === 'agri' && s > 1.5) {
+    if (w.ground) {
+      // real map: satellite picture as the base layer
+      if (this.groundSrc !== w.ground.url) { this.groundSrc = w.ground.url; this.groundImg.src = w.ground.url; }
+      const [gx, gy] = P(w.ground.x0, w.ground.y1);
+      if (this.groundImg.complete && this.groundImg.naturalWidth) g.drawImage(this.groundImg, gx, gy, (w.ground.x1 - w.ground.x0) * s, (w.ground.y1 - w.ground.y0) * s);
+      if (w.fieldPoly) { g.strokeStyle = 'rgba(255,230,120,0.7)'; g.setLineDash([4, 4]); g.beginPath(); w.fieldPoly.forEach(([x, y], i) => { const [a, b] = P(x, y); i ? g.lineTo(a, b) : g.moveTo(a, b); }); g.closePath(); g.stroke(); g.setLineDash([]); }
+    } else { g.fillStyle = w.category === 'wedding' ? '#4f8a3a' : '#556b2c'; g.fillRect(fx0, fy1, fx1 - fx0, fy0 - fy1); }
+    if (w.category === 'agri' && s > 1.5 && !w.ground) {
       g.strokeStyle = 'rgba(30,45,15,0.35)'; g.lineWidth = 1;
       for (let x = w.field.x0; x < w.field.x1; x += 2) { const [a] = P(x, 0); g.beginPath(); g.moveTo(a, fy1); g.lineTo(a, fy0); g.stroke(); }
     }
-    const [hx, hy] = P(0, -8); g.fillStyle = '#7a6a52'; g.fillRect(0, hy - 2.25 * s, r.width, 4.5 * s); void hx;
+    if (!w.ground) { const [, hy] = P(0, -8); g.fillStyle = '#7a6a52'; g.fillRect(0, hy - 2.25 * s, r.width, 4.5 * s); }
     // lat/lon grid
     g.strokeStyle = 'rgba(255,255,255,0.08)'; g.fillStyle = 'rgba(255,255,255,0.45)'; g.font = '10px monospace';
     const step = s > 6 ? 10 : s > 2 ? 25 : 50;
     const [mx0, my0] = this.toM(0, r.height), [mx1, my1] = this.toM(r.width, 0);
-    for (let x = Math.ceil(mx0 / step) * step; x < mx1; x += step) { const [a] = P(x, 0); g.beginPath(); g.moveTo(a, 0); g.lineTo(a, r.height); g.stroke(); g.fillText(`${toLatLon(x, 0)[1].toFixed(5)}°E`, a + 2, r.height - 4); }
-    for (let y = Math.ceil(my0 / step) * step; y < my1; y += step) { const [, b] = P(0, y); g.beginPath(); g.moveTo(0, b); g.lineTo(r.width, b); g.stroke(); g.fillText(`${toLatLon(0, y)[0].toFixed(5)}°N`, 2, b - 2); }
+    for (let x = Math.ceil(mx0 / step) * step; x < mx1; x += step) { const [a] = P(x, 0); g.beginPath(); g.moveTo(a, 0); g.lineTo(a, r.height); g.stroke(); g.fillText(`${toLatLon(x, 0, w.geo)[1].toFixed(5)}°E`, a + 2, r.height - 4); }
+    for (let y = Math.ceil(my0 / step) * step; y < my1; y += step) { const [, b] = P(0, y); g.beginPath(); g.moveTo(0, b); g.lineTo(r.width, b); g.stroke(); g.fillText(`${toLatLon(0, y, w.geo)[0].toFixed(5)}°N`, 2, b - 2); }
     // coverage overlay (1 m grid image, x0=-80 y0=-50, 160×190)
     if (t.cov.img && t.cov.img !== this.covSrc) { this.covSrc = t.cov.img; this.covImg.src = t.cov.img; }
     if (this.covSrc && this.covImg.complete) {
@@ -227,6 +237,40 @@ export class GcsUI {
     this.root.querySelectorAll<HTMLButtonElement>('[data-t]').forEach((b) => b.classList.toggle('on', b.dataset.t === this.tab));
     const p = this.root.querySelector<HTMLElement>('#g-panel')!;
     const plan = this.plan(t);
+    if (this.kind === 'cam' && this.tab === 'camera') {
+      const c = t.cam;
+      p.innerHTML = `
+        <div class="seg"><button data-cm="photo" class="${this.camMode === 'photo' ? 'on' : ''}">Photo</button><button data-cm="video" class="${this.camMode === 'video' ? 'on' : ''}">Video</button></div>
+        <button class="shutter ${this.camMode} ${c.rec ? 'rec' : ''}" id="g-shut" title="Shutter"></button>
+        <div class="kv small"><span>Recording</span><span>${c.rec ? `● ${fmtT(c.recSec)}` : 'no'}</span><span>Photos</span><span>${c.photos}</span><span>Format</span><span>4K 30fps · ISO 100 · 1/60 · EV 0</span></div>
+        <label class="gsl">Gimbal tilt<b>${c.gimbal.toFixed(0)}°</b><input type="range" id="g-gimsl" min="-90" max="20" step="1" value="${c.gimbal}"></label>
+        <div class="grid2"><button data-gp="0">Level 0°</button><button data-gp="-45">−45°</button><button data-gp="-90">Down −90°</button><button data-gp="-15">Default −15°</button></div>
+        <p class="small muted">Shots for weddings: slow reveal (pitch + tilt up), orbit around the mandap, top-down at −90°. Never fly over the guests.</p>`;
+      p.querySelectorAll<HTMLButtonElement>('[data-cm]').forEach((b) => (b.onclick = () => { this.camMode = b.dataset.cm as 'photo'; this.renderPanel(true); }));
+      p.querySelector<HTMLButtonElement>('#g-shut')!.onclick = () => void this.send({ t: this.camMode === 'photo' ? 'photo' : 'rec' }).then(() => this.renderPanel(true));
+      const gs = p.querySelector<HTMLInputElement>('#g-gimsl')!;
+      gs.oninput = () => { gs.previousElementSibling!.textContent = `${gs.value}°`; void this.send({ t: 'gimbal', pitch: +gs.value }); };
+      gs.onchange = () => gs.blur();
+      p.querySelectorAll<HTMLButtonElement>('[data-gp]').forEach((b) => (b.onclick = () => void this.send({ t: 'gimbal', pitch: +b.dataset.gp! }).then(() => this.renderPanel(true))));
+      return;
+    }
+    if (this.kind === 'cam' && this.tab === 'fly') {
+      const a = t.alt;
+      p.innerHTML = `
+        <div class="altbig"><span>H</span><b>${a.agl.toFixed(1)}</b><em>m above ground</em></div>
+        <div class="kv small"><span>Above take-off</span><span>${a.rel.toFixed(1)} m</span><span>Altitude MSL</span><span>${a.msl.toFixed(0)} m</span>
+          <span>Distance</span><span>${t.homeDist.toFixed(0)} m</span><span>Horizontal speed</span><span>${t.gs.toFixed(1)} m/s</span><span>Vertical speed</span><span>${t.vs.toFixed(1)} m/s</span><span>Flight time</span><span>${fmtT(t.flightTime)}</span></div>
+        <div class="grid2">
+          <button data-c="takeoff" ${!t.armed && !t.crashed ? '' : 'disabled'}>Take off</button>
+          <button data-c="land" ${t.armed && !t.landed ? '' : 'disabled'}>Land</button>
+          <button data-c="rth" class="warnbtn" ${t.armed ? '' : 'disabled'}>Return home</button>
+          <button data-c="pause" ${t.armed ? '' : 'disabled'}>Brake / hover</button>
+          <button data-c="manual" ${t.gcsMode !== null ? '' : 'disabled'}>Manual control</button>
+        </div>
+        <p class="small muted">The RC sticks fly the drone after take-off (P-GPS). Moving the mode switch always takes control back.</p>`;
+      p.querySelectorAll<HTMLButtonElement>('[data-c]').forEach((b) => (b.onclick = () => void this.send({ t: b.dataset.c as 'land' })));
+      return;
+    }
     if (this.tab === 'plan') {
       const st = missionStats(plan, t.drone.flowLpm, t.drone.tankCap, [0, 0]);
       const per = plan.poly.reduce((s, q, i) => s + Math.hypot(q[0] - plan.poly[(i + 1) % plan.poly.length][0], q[1] - plan.poly[(i + 1) % plan.poly.length][1]), 0);
@@ -247,7 +291,7 @@ export class GcsUI {
         </div>
         <p class="small muted">Corners: drag to move, long-press / right-click to delete. Dashed circles = keep-out around trees, red dashed = wires.</p>`;
       p.querySelector<HTMLInputElement>('#g-edit')!.onchange = (e) => (this.edit = (e.target as HTMLInputElement).checked);
-      p.querySelector<HTMLButtonElement>('#g-field')!.onclick = () => { const w = this.link.world(); if (!w) return; const f = w.field; this.pushPlan({ ...plan, poly: [[f.x0 + 5, f.y0 + 5], [f.x1 - 5, f.y0 + 5], [f.x1 - 5, f.y1 - 5], [f.x0 + 5, f.y1 - 5]] }); };
+      p.querySelector<HTMLButtonElement>('#g-field')!.onclick = () => { const w = this.link.world(); if (!w) return; const f = w.field; this.pushPlan({ ...plan, poly: w.fieldPoly ? w.fieldPoly.map((q) => [...q] as Pt) : [[f.x0 + 5, f.y0 + 5], [f.x1 - 5, f.y0 + 5], [f.x1 - 5, f.y1 - 5], [f.x0 + 5, f.y1 - 5]] }); };
       p.querySelector<HTMLButtonElement>('#g-undo')!.onclick = () => this.pushPlan({ ...plan, poly: plan.poly.slice(0, -1) });
       p.querySelector<HTMLButtonElement>('#g-clear')!.onclick = () => this.pushPlan({ ...plan, poly: [] });
       p.querySelectorAll<HTMLInputElement>('input[data-k]').forEach((i) => {
@@ -298,11 +342,12 @@ export class GcsUI {
 
   private renderFoot(t: Telemetry) {
     const slide = this.root.querySelector<HTMLElement>('#g-slide')!;
-    const canStart = t.mission.lanes > 0 && !t.starting && !t.crashed && (t.gcsMode !== 5 || !t.armed);
+    const cam = this.kind === 'cam';
+    const canStart = cam ? !t.armed && !t.starting && !t.crashed : t.mission.lanes > 0 && !t.starting && !t.crashed && (t.gcsMode !== 5 || !t.armed);
     slide.classList.toggle('disabled', !canStart);
-    this.root.querySelector('#g-slidetext')!.textContent = t.starting ? 'Pre-flight checks…' : !t.mission.lanes ? 'Plan an area first' : t.mission.bp ? 'Slide to resume from breakpoint' : t.armed && !t.landed ? 'Slide to start mission' : 'Slide to take off & spray';
+    this.root.querySelector('#g-slidetext')!.textContent = t.starting ? 'Pre-flight checks…' : cam ? (t.armed ? 'Flying — use the sticks' : 'Slide to take off') : !t.mission.lanes ? 'Plan an area first' : t.mission.bp ? 'Slide to resume from breakpoint' : t.armed && !t.landed ? 'Slide to start mission' : 'Slide to take off & spray';
     const a = this.root.querySelector<HTMLElement>('#g-actions')!;
-    const html = t.starting ? '<button data-c="abort" class="danger">Cancel</button>' : t.armed ? '<button data-c="rth" class="warnbtn">RTH</button>' : '';
+    const html = t.starting ? '<button data-c="abort" class="danger">Cancel</button>' : t.armed ? `${cam && !t.landed ? '<button data-c="land">Land</button>' : ''}<button data-c="rth" class="warnbtn">RTH</button>` : '';
     if (a.innerHTML !== html) { a.innerHTML = html; a.querySelectorAll<HTMLButtonElement>('[data-c]').forEach((b) => (b.onclick = () => void this.send({ t: b.dataset.c as 'rth' }))); }
     // pre-flight checklist overlay
     const ck = this.root.querySelector<HTMLElement>('#g-checks')!;
@@ -323,7 +368,7 @@ export class GcsUI {
       if (!dragging) return; dragging = false;
       const v = set(e.clientX - x0);
       th.style.transition = ''; fill.style.transition = '';
-      if (v > 0.9) { set(9999); void this.send({ t: 'start' }); this.tab = 'fly'; this.renderPanel(true); setTimeout(() => set(0), 900); } else set(0);
+      if (v > 0.9) { set(9999); void this.send({ t: this.kind === 'cam' ? 'takeoff' : 'start' }); if (this.kind !== 'cam') this.tab = 'fly'; this.renderPanel(true); setTimeout(() => set(0), 900); } else set(0);
     });
   }
 
@@ -331,13 +376,36 @@ export class GcsUI {
     if (this.embedded && !this.root.classList.contains('open')) return;
     const t = this.link.tel(), w = this.link.world();
     if (!t || !w) return;
+    const kind = t.drone.camera ? 'cam' : 'agri';
+    if (kind !== this.kind) {
+      this.kind = kind;
+      this.root.classList.toggle('camui', kind === 'cam');
+      this.tab = kind === 'cam' ? 'camera' : 'plan';
+      this.edit = kind !== 'cam';
+      const tabs: [string, string][] = kind === 'cam' ? [['camera', 'Camera'], ['fly', 'Flight'], ['battery', 'Battery']] : [['plan', 'Plan'], ['fly', 'Fly'], ['battery', 'Battery']];
+      const tb = this.root.querySelector<HTMLElement>('#g-tabs')!;
+      tb.innerHTML = tabs.map(([k, l]) => `<button data-t="${k}">${l}</button>`).join('');
+      tb.querySelectorAll<HTMLButtonElement>('[data-t]').forEach((b) => (b.onclick = () => { this.tab = b.dataset.t as typeof this.tab; this.renderPanel(true); }));
+      this.fitted = ''; this.renderPanel(true);
+    }
+    if (kind === 'cam') this.cameraView(t);
     this.renderTop(t);
     this.drawMap(t, w);
     this.renderPanel();
     this.renderFoot(t);
   }
 
-  open(tab?: 'plan' | 'fly' | 'battery') { if (tab) this.tab = tab; this.root.classList.add('open'); this.renderPanel(true); }
+  private cameraView(t: Telemetry) {
+    const box = this.root.querySelector<HTMLElement>('#g-video')!;
+    const v = this.link.video?.() ?? null;
+    if (v && v.parentElement !== box) box.prepend(v);
+    const c = t.cam;
+    this.root.querySelector('#g-camtop')!.innerHTML = `${c.rec ? `<span class="recdot"></span> REC ${fmtT(c.recSec)}` : 'VIDEO · 4K 30'} &nbsp; · &nbsp; ${c.photos} photos`;
+    this.root.querySelector('#g-cambot')!.innerHTML = `<b>H</b> ${t.alt.agl.toFixed(1)} m &nbsp; <b>D</b> ${t.homeDist.toFixed(0)} m &nbsp; <b>H.S</b> ${t.gs.toFixed(1)} m/s &nbsp; <b>V.S</b> ${t.vs.toFixed(1)} m/s`;
+    this.root.querySelector<HTMLElement>('#g-gim')!.style.top = `${((20 - c.gimbal) / 110 * 100).toFixed(0)}%`;
+  }
+
+  open(tab?: 'plan' | 'fly' | 'battery' | 'camera') { if (tab) this.tab = tab; this.root.classList.add('open'); this.renderPanel(true); }
   close() { this.root.classList.remove('open'); (document.activeElement as HTMLElement | null)?.blur(); }
   isOpen() { return this.root.classList.contains('open'); }
   toggle() { if (this.isOpen()) this.close(); else this.open(); }

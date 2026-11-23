@@ -308,7 +308,20 @@ export class World3D {
     };
     const fw = FIELD.x1 - FIELD.x0, fh = FIELD.y1 - FIELD.y0;
     const fcx = (FIELD.x0 + FIELD.x1) / 2, fcy = (FIELD.y0 + FIELD.y1) / 2;
-    if (WORLD.category === 'agri') {
+    if (WORLD.ground) {
+      // real map: satellite picture as the ground, OSM buildings, crops inside the real field outline
+      const gd = WORLD.ground;
+      const t = texLoader.load(gd.url); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+      const sat = new THREE.Mesh(new THREE.PlaneGeometry(gd.x1 - gd.x0, gd.y1 - gd.y0), new THREE.MeshStandardMaterial({ map: t, roughness: 1 }));
+      sat.rotation.x = -Math.PI / 2; sat.position.copy(v3((gd.x0 + gd.x1) / 2, (gd.y0 + gd.y1) / 2, 0.025)); sat.receiveShadow = true; sat.renderOrder = 3; s.add(sat);
+      if (WORLD.fieldPoly) this.buildCrops();
+      const wallM = new THREE.MeshStandardMaterial({ color: 0xe2d6c0, roughness: 0.95 });
+      const roofM = new THREE.MeshStandardMaterial({ color: 0x8d8478, roughness: 0.9 });
+      for (const b of BOXES) {
+        addBox(b.x, b.y, b.hx * 2, b.hy * 2, b.h, wallM);
+        addBox(b.x, b.y, b.hx * 2 + 0.3, b.hy * 2 + 0.3, 0.25, roofM, b.h);
+      }
+    } else if (WORLD.category === 'agri') {
       // field: ploughed soil + instanced crop rows + bunds
       const crop = cropById(settings.env.crop);
       const soil = new THREE.Mesh(new THREE.PlaneGeometry(fw, fh), new THREE.MeshStandardMaterial({
@@ -369,13 +382,18 @@ export class World3D {
       s.add(bm);
     }
     // farmhouse / banquet hall
+    if (HOUSE.hx < 0.5) { this.buildTank(steel); return; }
     const wall = new THREE.MeshStandardMaterial({ color: wedding ? 0xf1e9dc : 0xe4d6b8, roughness: 0.95 });
     addBox(HOUSE.x, HOUSE.y, HOUSE.hx * 2, HOUSE.hy * 2, HOUSE.h, wall);
     const roof = new THREE.Mesh(new THREE.ConeGeometry(Math.hypot(HOUSE.hx, HOUSE.hy) * 1.05, 2.2, 4), new THREE.MeshStandardMaterial({ color: 0x9a4430, roughness: 0.8, flatShading: true }));
     roof.rotation.y = Math.PI / 4; roof.scale.set(HOUSE.hx / HOUSE.hy * 0.9, 1, 1);
     roof.position.copy(v3(HOUSE.x, HOUSE.y, HOUSE.h + 1.1)); roof.castShadow = true; s.add(roof);
     const door = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 2.1), new THREE.MeshStandardMaterial({ color: 0x4a3322 })); door.position.copy(v3(HOUSE.x, HOUSE.y + HOUSE.hy + 0.01, 1.05)); s.add(door);
-    // water tank tower
+    this.buildTank(steel);
+  }
+
+  private buildTank(steel: THREE.Material) {
+    const s = this.site;
     if (WORLD.waterTank) {
       for (const [dx, dy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
         const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, WATER_TANK.legH, 8), steel);
@@ -432,7 +450,7 @@ export class World3D {
     }
   }
 
-  private siteId() { return `${WORLD.category}:${WORLD.seed}:${settings.env.crop}:${settings.env.grass}`; }
+  private siteId() { return `${WORLD.category}:${WORLD.seed}:${WORLD.mapId ?? ''}:${settings.env.crop}:${settings.env.grass}`; }
 
   private buildCrops() {
     const crop = cropById(settings.env.crop);
@@ -470,8 +488,16 @@ export class World3D {
     const col = new THREE.Color();
     let k = 0, seed = 11;
     const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    const poly = WORLD.fieldPoly;
+    const inside = (x: number, y: number) => {
+      if (!poly) return true;
+      let c = false;
+      for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const [xi, yi] = poly[i], [xj, yj] = poly[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; }
+      return c;
+    };
     for (const x of xs) for (let j = 0; j < perRow; j++) {
       const y = FIELD.y0 + 0.6 + j * step + (rnd() - 0.5) * 0.12;
+      if (!inside(x, y)) continue;
       p.copy(v3(x + (rnd() - 0.5) * 0.1, y, 0.03));
       q.setFromAxisAngle(up, rnd() * Math.PI);
       const s = 0.75 + rnd() * 0.5; sc.set(s, s * (0.85 + rnd() * 0.3), s);
@@ -479,6 +505,7 @@ export class World3D {
       mesh.setColorAt(k, col.setHSL(crop.hue + (rnd() - 0.5) * 0.04, crop.sat, crop.light + rnd() * 0.15));
       k++;
     }
+    mesh.count = k;
     mesh.receiveShadow = true;
     this.site.add(mesh);
   }

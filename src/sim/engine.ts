@@ -41,6 +41,8 @@ export class Engine {
   private lastModePos = -1;
   /** take-off / resume request from the ground station: pulse the arm command for a few frames */
   requestArm() { this.armCmdFrames = 6; }
+  /** guided point (auto take-off of camera drones): AUTO holds this point/height until cleared */
+  guided: { x: number; y: number; z: number } | null = null;
   coverage = new Coverage();
   /** RC reset button (rising edge) → restart on the pad */
   onResetRequest: () => void = () => {};
@@ -60,7 +62,7 @@ export class Engine {
     this.env.cropH = WORLD.category === 'agri' ? cropById(env.crop).height : 0;
     writeParams(this.core, this.drone, this.env, HOME, obstacleList(), FIELD);
     this.bay.reset(env.battSoc, env.temp, settings.chargeMinutes ?? 6);
-    this.gcsMode = null; this.armCmdFrames = 0; this.lastModePos = -1;
+    this.gcsMode = null; this.armCmdFrames = 0; this.lastModePos = -1; this.guided = null;
     this.core.setup();
     this.fail = { motor: 0, gps: false, compassErrDeg: 0 };
     this.rcLost = false; this.paused = false; this.acc = 0; this.lastFrame = 0; this.queue = [];
@@ -109,13 +111,14 @@ export class Engine {
     const modePositions = prof ? prof.modePositions : ([0, 1, 2] as const);
     const o = (k: keyof typeof O) => this.core.OUT[O[k]];
     const agl = o('RADAR_AGL') >= 0 ? o('RADAR_AGL') : o('Z');
-    const ms = this.mission.step({
+    const g = this.guided;
+    const ms = g ? { cmd: { on: true, ax: g.x, ay: g.y, bx: g.x, by: g.y, z: g.z, spd: 0 }, spray: false } : this.mission.step({
       mode: o('MODE'), armed: o('ARMED') > 0.5, landed: o('LANDED') > 0.5, x: o('EST_X'), y: o('EST_Y'), agl,
       soc: o('BATT_SOC'), lowBatt: this.drone.lowBatt, tank: o('TANK_L'), hasTank: this.drone.tankCap > 0,
     });
     const inAuto = o('MODE') === 5;
     // moving the RC mode switch always takes control back from the ground station
-    if (this.lastModePos >= 0 && use.modePos !== this.lastModePos && this.gcsMode !== null) { this.gcsMode = null; this.onEvent(950, 'Manual control: mode switch moved'); }
+    if (this.lastModePos >= 0 && use.modePos !== this.lastModePos && this.gcsMode !== null) { this.gcsMode = null; this.guided = null; this.onEvent(950, 'Manual control: mode switch moved'); }
     this.lastModePos = use.modePos;
     const armCmd = this.armCmdFrames > 0; if (armCmd) this.armCmdFrames--;
     writeInputs(this.core, {

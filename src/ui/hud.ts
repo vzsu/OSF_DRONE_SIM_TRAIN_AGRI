@@ -23,7 +23,16 @@ export class Hud {
   overCrowd = false;
   private rec = false;
   private recStart = 0;
+  private photos = 0;
   toggleRec() { this.rec = !this.rec; this.recStart = performance.now(); }
+  get recording() { return this.rec; }
+  camState() { return { rec: this.rec, recSec: this.rec ? (performance.now() - this.recStart) / 1000 : 0, photos: this.photos }; }
+  /** shutter: white flash on the screen */
+  photo() {
+    this.photos++;
+    const f = document.createElement('div'); f.className = 'shutter-flash'; document.body.appendChild(f);
+    setTimeout(() => f.remove(), 260);
+  }
   private lastCov = 0;
 
   constructor() {
@@ -37,13 +46,18 @@ export class Hud {
         <span id="h-link">RC —</span>
       </div>
       <div class="box warnbar" id="h-warn"></div>
-      <div class="box left">
-        <div class="lbl">ALT (AGL)</div><div class="big" id="h-agl">0.0</div>
-        <div class="line"><span>REL (baro)</span><span id="h-rel">0.0</span></div>
-        <div class="line"><span>VS</span><span id="h-vs">0.0</span></div>
-        <div class="line"><span>TGT</span><span id="h-tgt">—</span></div>
+      <div class="box left altbox">
+        <canvas id="h-tape" width="54" height="190"></canvas>
+        <div class="altnums">
+        <div class="lbl">HEIGHT ABOVE GROUND</div><div class="big" id="h-agl">0.0</div>
+        <div class="line"><span>Above crop</span><span id="h-crop">—</span></div>
+        <div class="line"><span>Above take-off</span><span id="h-rel">0.0</span></div>
+        <div class="line"><span>Altitude MSL</span><span id="h-msl">—</span></div>
+        <div class="line"><span>Vertical speed</span><span id="h-vs">0.0</span></div>
+        <div class="line"><span>Target height</span><span id="h-tgt">—</span></div>
         <div class="line"><span>ROLL/PITCH</span><span id="h-att">0/0</span></div>
         <div class="line"><span>THR OUT</span><span id="h-thr">0%</span></div>
+        </div>
       </div>
       <div class="box right">
         <div class="lbl">GND SPEED</div><div class="big" id="h-gs">0.0</div>
@@ -110,9 +124,14 @@ export class Hud {
     const link = e.sticks.ok && !e.rcLost;
     const l = $('h-link'); l.textContent = link ? `RC ${e.sticks.source === 'Keyboard' ? 'KBD' : 'OK'}` : 'RC LOST'; l.className = link ? 'ok' : 'bad';
     const agl = o('RADAR_AGL') >= 0 ? o('RADAR_AGL') : o('Z');
-    $('h-agl').textContent = dist(agl);
+    const hGround = o('Z'), cropH = e.env.cropH ?? 0;
+    $('h-agl').textContent = dist(hGround);
+    $('h-crop').textContent = cropH > 0 && o('RADAR_AGL') >= 0 ? `${dist(agl)} (radar)` : '—';
     $('h-rel').textContent = dist(o('BARO_ALT'));
-    $('h-vs').textContent = spd(o('VSPEED'));
+    $('h-msl').textContent = dist(e.env.elev + hGround);
+    const vsv = o('VSPEED');
+    $('h-vs').textContent = `${Math.abs(vsv) < 0.05 ? '' : vsv > 0 ? '▲ ' : '▼ '}${spd(Math.abs(vsv))}`;
+    this.drawTape(hGround, o('MODE') === 0 ? NaN : o('TGT_ALT') + (hGround - agl), vsv);
     $('h-tgt').textContent = o('MODE') === 0 ? '—' : dist(o('TGT_ALT'));
     $('h-att').textContent = `${(o('ROLL') * 57.3).toFixed(0)}° / ${(-o('PITCH') * 57.3).toFixed(0)}°`;
     $('h-thr').textContent = `${(o('THR_OUT') * 100).toFixed(0)}%`;
@@ -164,6 +183,30 @@ export class Hud {
     const w = window as unknown as { __sim?: { world: { gimbalPitch: number } } };
     const gp = w.__sim?.world.gimbalPitch ?? 0;
     $('h-camline').textContent = `4K 30fps · ISO 100 · 1/60 · gimbal ${gp.toFixed(0)}° · H ${e.o('Z').toFixed(1)} m · D ${e.o('HOME_DIST').toFixed(0)} m · ${e.o('GNDSPEED').toFixed(1)} m/s`;
+  }
+
+  /** Vertical altitude tape (height above ground), target bug and vertical-speed bar. */
+  private drawTape(h: number, tgt: number, vs: number) {
+    const c = $('h-tape') as HTMLCanvasElement, g = c.getContext('2d')!;
+    const W = c.width, H = c.height, mid = H / 2, ppm = 9; // pixels per metre
+    g.clearRect(0, 0, W, H);
+    g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(0, 0, W - 10, H);
+    g.strokeStyle = 'rgba(255,255,255,0.75)'; g.fillStyle = 'rgba(255,255,255,0.85)'; g.font = '10px ui-monospace, monospace'; g.lineWidth = 1;
+    for (let m = Math.floor(h - mid / ppm); m <= h + mid / ppm; m++) {
+      if (m < 0) continue;
+      const y = mid - (m - h) * ppm;
+      const major = m % 5 === 0;
+      g.beginPath(); g.moveTo(W - 10, y); g.lineTo(W - 10 - (major ? 12 : 6), y); g.stroke();
+      if (major) g.fillText(String(m), 3, y + 3);
+    }
+    // ground line
+    const gy = mid + h * ppm; if (gy < H) { g.fillStyle = 'rgba(140,100,60,0.55)'; g.fillRect(0, gy, W - 10, H - gy); }
+    if (Number.isFinite(tgt)) { const ty = mid - (tgt - h) * ppm; g.fillStyle = '#3cc9ff'; g.beginPath(); g.moveTo(W - 10, ty); g.lineTo(W - 18, ty - 5); g.lineTo(W - 18, ty + 5); g.fill(); }
+    // current value pointer
+    g.fillStyle = '#fff'; g.beginPath(); g.moveTo(W - 10, mid); g.lineTo(W - 18, mid - 6); g.lineTo(W - 18, mid + 6); g.fill();
+    // vertical speed bar on the right edge (±3 m/s full scale)
+    const vh = Math.max(-1, Math.min(1, vs / 3)) * (mid - 6);
+    g.fillStyle = vs >= 0 ? '#3ccf7a' : '#ffb020'; g.fillRect(W - 6, Math.min(mid, mid - vh), 5, Math.abs(vh));
   }
 
   private missionPanel(e: Engine) {

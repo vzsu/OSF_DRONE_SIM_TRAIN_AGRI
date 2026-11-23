@@ -3,6 +3,8 @@ import { World3D } from './render/world3d';
 import { Hud } from './ui/hud';
 import { homeScreen, droneScreen, envScreen, settingsScreen, logsScreen, debriefScreen, setBack } from './ui/screens';
 import { missionScreen } from './ui/mission';
+import { realMapScreen } from './ui/realmap';
+import type { WorldDef } from './data/world';
 import { loginScreen, adminScreen } from './ui/account';
 import { me, logout, currentUser, offline } from './auth/client';
 import { DroneSound } from './audio/sound';
@@ -36,6 +38,10 @@ const sound = new DroneSound();
 const gcsHost = new GcsHost(engine, {
   beep: (f, n, len) => sound.beep(f, n, len), toast: (t, bad) => toast(t, bad),
   missionChanged: () => reloadMission(),
+  photo: () => { hud.photo(); sound.beep(2600, 1, 0.03); },
+  rec: () => { hud.toggleRec(); sound.beep(hud.recording ? 1200 : 800, 1, 0.08); },
+  gimbal: (p) => { if (p !== undefined) world.gimbalPitch = p; return world.gimbalPitch; },
+  camState: () => hud.camState(),
 });
 let telCache: Telemetry | null = null, telAt = 0;
 const localTel = () => {
@@ -44,7 +50,7 @@ const localTel = () => {
   if (!telCache || now - telAt > 100) { telCache = gcsHost.telemetry(false, true); telAt = now; }
   return telCache;
 };
-const gcs = new GcsUI({ tel: localTel, world: () => (flying ? gcsHost.worldGeo() : null), send: (c) => gcsHost.command(c) }, document.body, true);
+const gcs = new GcsUI({ tel: localTel, world: () => (flying ? gcsHost.worldGeo() : null), send: (c) => gcsHost.command(c), video: () => linkHost.aux }, document.body, true);
 {
   const h = document.createElement('div'); h.className = 'gcs-handle'; h.title = 'Close (G)'; h.onclick = () => gcs.close();
   gcs.root.prepend(h);
@@ -53,7 +59,7 @@ const gcsBtn = document.createElement('button');
 gcsBtn.className = 'gcs-open-btn'; gcsBtn.textContent = 'Ground station (G)';
 gcsBtn.onclick = () => gcs.toggle();
 document.body.appendChild(gcsBtn);
-const linkHost = new LinkHost(engine, world, gcsHost, (t, bad) => toast(t, bad));
+const linkHost = new LinkHost(gcsHost, (t, bad) => toast(t, bad));
 let missionKey = '';
 for (const ev of ['pointerdown', 'keydown']) window.addEventListener(ev, () => sound.unlock());
 
@@ -73,9 +79,27 @@ const viewsFor = (): View[] => (engine.drone?.fc === 'dji' ? VIEWS : VIEWS.filte
 function cycleView() { const vs = viewsFor(); settings.camera.view = vs[(vs.indexOf(settings.camera.view) + 1) % vs.length]; saveSettings(); }
 
 /** Build the selected training ground (agri farm / wedding venue) for physics, renderer, map. */
-function applyPlace() {
+const mapCache = new Map<string, WorldDef>();
+async function applyPlace(): Promise<void> {
+  if (settings.place.id.startsWith('map:')) {
+    // saved real map (Chhattisgarh): load its ground definition from the server
+    const id = settings.place.id.slice(4);
+    if (WORLD.mapId !== id) {
+      let w = mapCache.get(id);
+      if (!w) {
+        const r = await fetch(`/api/maps/${id}`).catch(() => null);
+        if (!r || !r.ok) { toast('Saved map not available — flying the home farm', true); settings.place = { id: 'agri-classic', category: 'agri', seed: 0 }; saveSettings(); return applyPlace(); }
+        w = ((await r.json()) as { world: WorldDef }).world;
+        mapCache.set(id, w);
+      }
+      setWorld(w);
+      settings.mission.poly = defaultPlan().poly; saveSettings();
+    }
+    world.rebuildSite();
+    return;
+  }
   const pl = settings.place.id === 'custom' ? { category: settings.place.category, seed: settings.place.seed, name: '' } : placeById(settings.place.id);
-  if (WORLD.category !== pl.category || WORLD.seed !== pl.seed) {
+  if (WORLD.category !== pl.category || WORLD.seed !== pl.seed || WORLD.mapId) {
     setWorld(generateWorld(pl.category, pl.seed, pl.name));
     // keep the mission area on the new field
     settings.mission.poly = defaultPlan().poly; saveSettings();
@@ -85,7 +109,7 @@ function applyPlace() {
 
 function nav(screen: string, arg?: unknown) {
   closePause();
-  if (screen === 'fly') { if (!currentUser && !offline) { loginScreen(nav); return; } return startFlight(); }
+  if (screen === 'fly') { if (!currentUser && !offline) { loginScreen(nav); return; } void startFlight(); return; }
   if (screen === 'resume' && flying) {
     // back from settings / mission planner opened in the pause menu
     setBack('home', '← Home');
@@ -108,6 +132,7 @@ function nav(screen: string, arg?: unknown) {
   else if (screen === 'env') envScreen(nav);
   else if (screen === 'settings') settingsScreen(nav);
   else if (screen === 'mission') missionScreen(nav);
+  else if (screen === 'realmap') realMapScreen(nav);
   else if (screen === 'logs') logsScreen(nav);
   else if (screen === 'debrief') debriefScreen(nav, arg as FlightLog);
 }
@@ -123,8 +148,8 @@ function reloadMission() {
   hud.missionChanged();
 }
 
-function startFlight() {
-  applyPlace();
+async function startFlight() {
+  await applyPlace();
   engine.start(settings.droneId, settings.env);
   if (!viewsFor().includes(settings.camera.view)) settings.camera.view = 'vlos';
   world.setDrone(engine.drone);
@@ -133,7 +158,7 @@ function startFlight() {
   world.snap(engine);
   missionKey = JSON.stringify(settings.mission);
   hud.resetTrail(); hud.missionChanged();
-  gcsHost.reset(); linkHost.worldChanged();
+  gcsHost.reset();
   keyboardArmReset();
   uiEl.innerHTML = '';
   hud.show(true);
@@ -254,6 +279,8 @@ function frame(now: number) {
     const vp = engine.sticks.viewPos;
     if (lastViewPos >= 0 && vp !== lastViewPos) cycleView();
     lastViewPos = vp;
+    // drone-camera picture: needed by phone screens and by the camera-drone ground station
+    world.auxCtx = linkHost.viewers > 0 || (gcs.isOpen() && engine.drone.fc === 'dji') ? linkHost.aux.getContext('2d') : null;
     world.update(engine, engine.paused ? 0 : dt);
     // camera drones have no pump: the radio's pump/flow knob drives the gimbal pitch instead
     if (engine.drone.tankCap === 0 && engine.sticks.flow < 0.999) world.gimbalPitch = -90 + engine.sticks.flow * 110;
