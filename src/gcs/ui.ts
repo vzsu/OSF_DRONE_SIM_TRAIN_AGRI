@@ -197,6 +197,12 @@ export class GcsUI {
       const [a, b] = P(...t.mission.legA), [c2, d2] = P(...t.mission.legB); g.strokeStyle = '#3cff8a'; g.lineWidth = 3; g.beginPath(); g.moveTo(a, b); g.lineTo(c2, d2); g.stroke();
     }
     if (t.mission.bp) { const [a, b] = P(t.mission.bp.x, t.mission.bp.y); g.fillStyle = '#ff3b30'; g.fillRect(a - 6, b - 6, 12, 12); g.fillStyle = '#fff'; g.font = 'bold 11px sans-serif'; g.fillText('BREAKPOINT', a + 9, b + 4); }
+    // fly area (geofence)
+    if (w.geofence && w.geofence.length > 2) {
+      g.strokeStyle = '#3bceac'; g.lineWidth = 2.5; g.setLineDash([7, 5]); g.beginPath();
+      w.geofence.forEach(([x, y], i) => { const [a, b] = P(x, y); i ? g.lineTo(a, b) : g.moveTo(a, b); }); g.closePath(); g.stroke(); g.setLineDash([]);
+      const [la, lb] = P(w.geofence[0][0], w.geofence[0][1]); g.fillStyle = '#3bceac'; g.font = 'bold 11px sans-serif'; g.fillText('FLY AREA', la + 6, lb - 6);
+    }
     // trail blue → yellow
     const tr = t.trail, n = tr.length;
     g.lineWidth = 2.5;

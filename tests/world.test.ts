@@ -23,3 +23,15 @@ describe('generated training grounds', () => {
     });
   }
 });
+
+describe('fly area (geofence)', () => {
+  it('measures how far outside the drawn area the drone is', async () => {
+    const { fenceBreach } = await import('../src/data/world');
+    const w = generateWorld('agri', 0); w.geofence = [[-20, 10], [20, 10], [20, 60], [-20, 60]]; setWorld(w);
+    expect(fenceBreach(0, 30)).toBe(0);
+    expect(fenceBreach(25, 30)).toBeCloseTo(5, 5);
+    expect(fenceBreach(0, 0)).toBeCloseTo(10, 5);
+    setWorld(generateWorld('agri', 0));
+    expect(fenceBreach(500, 500)).toBe(0); // no fence → never breached
+  });
+});

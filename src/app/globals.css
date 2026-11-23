@@ -295,3 +295,11 @@ body.flying #lens { opacity: 1; }
 .lesson-result .lr-objs { text-align: left; display: inline-block; margin-top: 6px; } .lesson-result .lr-objs .ok { font-weight: 700; }
 .lesson-result .row { justify-content: center; }
 .screen .lesson-sum.ok { background: #e9fbf3; } .screen .lesson-sum.bad { background: #ffe9e9; }
+/* real-map tools */
+.rm-tools { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0; }
+.screen .rm-tools button.tool { font-size: 14px; }
+.screen .rm-tools button.tool.on { background: var(--nb-yel); box-shadow: 4px 4px 0 var(--nb-ink); }
+.rm-map.drawing { cursor: crosshair; }
+.rm-map.drawing .leaflet-interactive, .rm-map.drawing .leaflet-grab { cursor: crosshair; }
+.rm-corner { background: var(--nb-teal); border: 2.5px solid var(--nb-ink); border-radius: 50%; font: 800 11px/15px var(--display); text-align: center; color: var(--nb-ink); cursor: move; }
+.rm-home { cursor: move; box-shadow: 2px 2px 0 var(--nb-ink); }

@@ -16,7 +16,7 @@ import { GcsHost, type Telemetry } from './gcs/host';
 import { GcsUI } from './gcs/ui';
 import { LinkHost } from './net/linkHost';
 import { DRONES } from './data/drones';
-import { HOME, setWorld, generateWorld, placeById, WORLD, overCrowd } from './data/world';
+import { HOME, setWorld, generateWorld, placeById, WORLD, overCrowd, fenceBreach } from './data/world';
 import { defaultPlan } from './sim/mission';
 import { settings, saveSettings, type View } from './settings';
 import { onKey, keyboardArmReset } from './input/input';
@@ -36,6 +36,7 @@ let lastT = 0;
 let lastViewPos = -1;
 let pauseEl: HTMLElement | null = null;
 let slowWarned = false;
+let fenceTripped = false;
 const sound = new DroneSound();
 // ---------- lessons + checkride ----------
 const lessons = new LessonRunner();
@@ -326,6 +327,16 @@ function frame(now: number) {
     if (engine.drone.tankCap === 0 && engine.sticks.flow < 0.999) world.gimbalPitch = -90 + engine.sticks.flow * 110;
     // wedding training: never fly over the guests
     hud.overCrowd = overCrowd(engine.o('X'), engine.o('Y'), 2) && engine.o('Z') > 0.5;
+    // fly area (geofence): > 3 m outside → return home, like an agri FC fence (action RTL)
+    {
+      const fb = fenceBreach(engine.o('X'), engine.o('Y'));
+      if (fb > 3 && engine.o('ARMED') > 0.5 && engine.o('LANDED') < 0.5 && !fenceTripped) {
+        fenceTripped = true; engine.gcsMode = 3; engine.guided = null;
+        toast('GEOFENCE breach — returning home', true); speak('Geofence breach. Returning home', 0);
+        engine.recorder.event(engine.o('T'), 960, 'Geofence breach → RTH');
+      }
+      if (fb === 0 && engine.o('LANDED') > 0.5) fenceTripped = false;
+    }
     const cp = world.camera.position;
     sound.update(engine, { x: cp.x, y: -cp.z, z: cp.y }, dt);
     hud.update(engine, now);

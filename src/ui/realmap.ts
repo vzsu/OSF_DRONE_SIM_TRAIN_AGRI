@@ -30,9 +30,14 @@ export function realMapScreen(nav: Nav) {
         <h3>1 · Find the field</h3>
         <div class="row"><input id="rm-q" placeholder="Village, town or field (e.g. Abhanpur)" style="flex:1"><button id="rm-go">Search</button></div>
         <div id="rm-res" class="rm-res"></div>
-        <h3>2 · Click the take-off point</h3>
-        <p class="small">Click on the map where the pilot takes off (<b>H</b>). The orange box (160 × 190 m) becomes the training ground. Click again to move it.</p>
-        <p class="small mono" id="rm-pos">no point yet</p>
+        <h3>2 · Home point &amp; fly area</h3>
+        <div class="rm-tools">
+          <button id="rm-tpin" class="tool on" title="Click the map to place the take-off point">📍 Pin home</button>
+          <button id="rm-tarea" class="tool" title="Click the map to add corners of the area you may fly / spray">▱ Draw fly area</button>
+          <button id="rm-undo" class="small">Undo point</button><button id="rm-clear" class="small danger">Clear area</button>
+        </div>
+        <p class="small" id="rm-hint">Choose a tool, then click on the map. Drag the pin or any corner to adjust.</p>
+        <div class="kv small" id="rm-stats"><span>Home</span><span class="mono" id="rm-pos">not placed</span><span>Fly area</span><span id="rm-area">not drawn (optional)</span></div>
         <h3>3 · Weather</h3>
         <div class="row" id="rm-w">${Object.keys(ENV_PRESETS).map((k) => `<button data-w="${k}" class="${k === weather ? 'on' : ''}">${PRESET_NAMES[k]}</button>`).join('')}</div>
         <h3>4 · Save</h3>
@@ -53,21 +58,75 @@ export function realMapScreen(nav: Nav) {
   const osm = L.tileLayer('/tiles/osm/{z}/{x}/{y}', { maxZoom: 19 });
   $('rm-sat').onclick = () => { m.removeLayer(osm); sat.addTo(m); $('rm-sat').classList.add('on'); $('rm-osm').classList.remove('on'); };
   $('rm-osm').onclick = () => { m.removeLayer(sat); osm.addTo(m); $('rm-osm').classList.add('on'); $('rm-sat').classList.remove('on'); };
+  // ---- tools: pin the home point, draw the fly area (geofence + spray area) ----
+  let tool: 'pin' | 'area' = 'pin';
   let rect: L.Rectangle | null = null, mark: L.Marker | null = null;
-  const icon = L.divIcon({ className: 'rm-home', html: 'H', iconSize: [26, 26] });
-  m.on('click', (ev: L.LeafletMouseEvent) => {
-    const { lat, lng } = ev.latlng;
-    if (lat < 17.7 || lat > 24.2 || lng < 80.2 || lng > 84.5) { $('rm-pos').textContent = 'Outside Chhattisgarh — pick a point inside the state'; return; }
+  let area: L.LatLng[] = [];
+  let poly: L.Polygon | null = null;
+  const corners: L.Marker[] = [];
+  const homeIcon = L.divIcon({ className: 'rm-home', html: 'H', iconSize: [28, 28] });
+  const cornerIcon = (i: number) => L.divIcon({ className: 'rm-corner', html: String(i + 1), iconSize: [20, 20] });
+  const inCG = (lat: number, lng: number) => lat > 17.7 && lat < 24.2 && lng > 80.2 && lng < 84.5;
+  const setTool = (t: typeof tool) => {
+    tool = t;
+    $('rm-tpin').classList.toggle('on', t === 'pin'); $('rm-tarea').classList.toggle('on', t === 'area');
+    $('rm-map').classList.toggle('drawing', true);
+    $('rm-hint').textContent = t === 'pin' ? 'Click where the pilot takes off. The orange box (160 × 190 m) is the 3D training ground.' : 'Click to add corners of the fly area (min. 3). Drag a corner to move it.';
+  };
+  $('rm-tpin').onclick = () => setTool('pin');
+  $('rm-tarea').onclick = () => { if (!home) { $('rm-hint').textContent = 'Pin the home point first.'; return; } setTool('area'); };
+  $('rm-undo').onclick = () => { area.pop(); redrawArea(); };
+  $('rm-clear').onclick = () => { area = []; redrawArea(); };
+
+  function placeHome(lat: number, lng: number) {
     home = [lat, lng];
     const c = enu(lat, lng);
     const [s, w] = c.from(BOX.x0, BOX.y0), [n, e] = c.from(BOX.x1, BOX.y1);
-    rect?.remove(); mark?.remove();
-    rect = L.rectangle([[s, w], [n, e]], { color: '#ff7a00', weight: 3, fillOpacity: 0.08 }).addTo(m);
-    mark = L.marker([lat, lng], { icon }).addTo(m);
-    $('rm-pos').textContent = `H ${lat.toFixed(6)}° N, ${lng.toFixed(6)}° E`;
+    rect?.remove();
+    rect = L.rectangle([[s, w], [n, e]], { color: '#ff7a00', weight: 2, dashArray: '6 6', fillOpacity: 0.04, interactive: false }).addTo(m);
+    if (!mark) {
+      mark = L.marker([lat, lng], { icon: homeIcon, draggable: true, zIndexOffset: 1000 }).addTo(m);
+      mark.on('drag', () => { const p = mark!.getLatLng(); if (inCG(p.lat, p.lng)) placeHome(p.lat, p.lng); });
+    } else mark.setLatLng([lat, lng]);
+    $('rm-pos').textContent = `${lat.toFixed(6)}° N, ${lng.toFixed(6)}° E`;
     $<HTMLButtonElement>('rm-build').disabled = false;
-    if (m.getZoom() < 16) m.setView([lat + (n - s) * 0.25, lng], 17);
+    redrawArea();
+  }
+
+  function redrawArea() {
+    poly?.remove(); poly = null;
+    corners.forEach((c) => c.remove()); corners.length = 0;
+    if (area.length >= 2) poly = L.polygon(area, { color: '#3bceac', weight: 3, fillColor: '#3bceac', fillOpacity: 0.18, interactive: false }).addTo(m);
+    area.forEach((ll, i) => {
+      const c = L.marker(ll, { icon: cornerIcon(i), draggable: true }).addTo(m);
+      c.on('drag', () => { area[i] = c.getLatLng(); poly?.setLatLngs(area); updateStats(); });
+      c.on('contextmenu', () => { area.splice(i, 1); redrawArea(); });
+      corners.push(c);
+    });
+    updateStats();
+  }
+
+  function updateStats() {
+    const el = $('rm-area');
+    if (area.length < 3 || !home) { el.textContent = area.length ? `${area.length} corner${area.length > 1 ? 's' : ''} — add at least 3` : 'not drawn (optional — the OSM field is used)'; el.className = ''; return; }
+    const c = enu(home[0], home[1]);
+    const pts = area.map((p) => c.to(p.lat, p.lng));
+    let a = 0, per = 0;
+    pts.forEach((p, i) => { const q = pts[(i + 1) % pts.length]; a += p[0] * q[1] - q[0] * p[1]; per += Math.hypot(q[0] - p[0], q[1] - p[1]); });
+    const fits = pts.every(([x, y]) => x >= BOX.x0 && x <= BOX.x1 && y >= BOX.y0 && y <= BOX.y1);
+    el.innerHTML = `${(Math.abs(a) / 2 / 10000).toFixed(3)} ha · ${per.toFixed(0)} m perimeter${fits ? '' : ' · <b class="bad">goes outside the 3D box — move H or shrink it</b>'}`;
+  }
+
+  m.on('click', (ev: L.LeafletMouseEvent) => {
+    const { lat, lng } = ev.latlng;
+    if (!inCG(lat, lng)) { $('rm-hint').textContent = 'Outside Chhattisgarh — pick a point inside the state'; return; }
+    if (tool === 'pin') {
+      placeHome(lat, lng);
+      if (m.getZoom() < 16) m.setView([lat + 0.0004, lng], 17);
+      if (!area.length) setTool('area'); // next natural step
+    } else { area.push(ev.latlng); redrawArea(); }
   });
+  setTool('pin');
   setTimeout(() => m.invalidateSize(), 50);
 
   // ---- search ----
@@ -99,6 +158,13 @@ export function realMapScreen(nav: Nav) {
       const osmData = (await r.json()) as OsmJson & { error?: string };
       if (!r.ok) throw new Error(osmData.error ?? 'map data unavailable');
       const w = worldFromOsm(osmData, home[0], home[1], name);
+      if (area.length >= 3) {
+        const c = enu(home[0], home[1]);
+        const pts = area.map((p) => { const [x, y] = c.to(p.lat, p.lng); return [Math.max(BOX.x0, Math.min(BOX.x1, x)), Math.max(BOX.y0, Math.min(BOX.y1, y))] as [number, number]; });
+        w.fieldPoly = pts; w.geofence = pts;
+        const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+        w.field = { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys), rowSpacing: 1.2 };
+      }
       prog.textContent = '2/3 Building the satellite ground picture…';
       const img = await groundImage(home[0], home[1]);
       prog.textContent = '3/3 Saving…';

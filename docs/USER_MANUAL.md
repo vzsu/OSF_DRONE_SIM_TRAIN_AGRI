@@ -210,7 +210,9 @@ With a DJI camera drone, the ground station becomes a **camera app** in the styl
 
 Home → **Real map — Chhattisgarh**:
 1. Search for a village or town (free OpenStreetMap search), or pan the satellite map. Switch between Satellite and Streets.
-2. **Click the take-off point (H).** The orange box (160 × 190 m) becomes the training ground.
+2. **📍 Pin home:** pick this tool on the right, then click the map where the pilot takes off (**H**). The dashed orange box (160 × 190 m) is the 3D training ground. Drag H to move it.
+   **▱ Draw fly area:** pick this tool and click the corners of the area you may fly / spray (min. 3). Drag the numbered corners to adjust; *Undo point* / *Clear area*; right-click a corner deletes it. Hectares and perimeter update live, with a warning if the area leaves the 3D box.
+   The fly area becomes the **spray area** and a **geofence**: in flight it is drawn on the map and tablet, the HUD warns *OUTSIDE FLY AREA*, more than 3 m outside triggers **return home**, and the debrief scores time outside.
 3. Pick the **weather** for this map.
 4. Give it a name and press **Build training ground**:
    - **trees, buildings and power lines** are downloaded from OpenStreetMap;

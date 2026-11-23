@@ -2,7 +2,7 @@
 // (spray quality, height/speed discipline, stick smoothness, landings, obstacle clearance,
 // battery discipline, emergency handling). Each item 0–100, weighted into a total grade.
 import { column, type FlightLog } from './recorder';
-import { obstacleList, overCrowd, CROWD } from '../data/world';
+import { obstacleList, overCrowd, CROWD, WORLD, fenceBreach } from '../data/world';
 import type { CoverageStats } from '../sim/coverage';
 
 export interface ScoreItem { key: string; name: string; value: string; score: number; weight: number; hint: string }
@@ -94,6 +94,12 @@ export function scoreFlight(log: FlightLog, cov: CoverageStats | null, plan: { h
     for (let i = 0; i < n; i++) if (armed[i] > 0.5 && z[i] > 0.5 && overCrowd(x[i], y[i], 2)) over++;
     const sec = over / 50;
     add('crowd', 'Flight over people', `${sec.toFixed(1)} s over guests`, 100 - sec * 15, 3, 'Never fly over the guests (DGCA rules). Frame shots from the side, keep 5+ m horizontal distance.');
+  }
+  // 5c. stay inside the fly area (geofence)
+  if (WORLD.geofence && WORLD.geofence.length > 2) {
+    let out = 0, worst = 0;
+    for (let i = 0; i < n; i++) if (armed[i] > 0.5) { const b = fenceBreach(x[i], y[i]); if (b > 0) { out++; worst = Math.max(worst, b); } }
+    add('fence', 'Inside the fly area', out ? `${(out / 50).toFixed(1)} s outside (max ${worst.toFixed(1)} m)` : 'always inside', 100 - out / 50 * 10 - worst * 5, 2, 'Stay inside the area the farmer / client allowed. > 3 m outside triggers an automatic return home.');
   }
   // 6. battery discipline
   let landSoc = soc[n - 1];

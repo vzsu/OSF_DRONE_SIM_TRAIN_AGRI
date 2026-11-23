@@ -14,7 +14,7 @@ export interface WorldGeo {
   key: string; category: string; name: string; field: { x0: number; x1: number; y0: number; y1: number };
   trees: [number, number, number][]; poles: [number, number][]; wires: [number, number][][]; house: { x: number; y: number; hx: number; hy: number };
   boxes: { x: number; y: number; hx: number; hy: number; kind: string }[]; crowd: { x0: number; x1: number; y0: number; y1: number }[]; home: [number, number];
-  geo: { lat: number; lon: number }; ground?: { url: string; x0: number; x1: number; y0: number; y1: number }; fieldPoly?: [number, number][];
+  geo: { lat: number; lon: number }; ground?: { url: string; x0: number; x1: number; y0: number; y1: number }; fieldPoly?: [number, number][]; geofence?: [number, number][];
 }
 export interface Telemetry {
   t: number; drone: { name: string; tankCap: number; flowLpm: number; lowBatt: number; minSats: number; rtk: boolean; cells: number; camera: boolean };
@@ -57,7 +57,7 @@ export class GcsHost {
       wires: WIRES.map((w) => [w.pts[0], w.pts[w.pts.length - 1]].map((p) => [p[0], p[1]] as [number, number])),
       house: { x: HOUSE.x, y: HOUSE.y, hx: HOUSE.hx, hy: HOUSE.hy }, boxes: BOXES.map((b) => ({ x: b.x, y: b.y, hx: b.hx, hy: b.hy, kind: b.kind })),
       crowd: CROWD.map((c) => ({ ...c })), home: [HOME.x, HOME.y],
-      geo: WORLD.geo ?? GEO_BASE, ground: WORLD.ground, fieldPoly: WORLD.fieldPoly,
+      geo: WORLD.geo ?? GEO_BASE, ground: WORLD.ground, fieldPoly: WORLD.fieldPoly, geofence: WORLD.geofence,
     };
   }
 

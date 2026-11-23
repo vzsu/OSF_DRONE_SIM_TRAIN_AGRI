@@ -1,7 +1,7 @@
 // Flight HUD: telemetry like a real agri GCS / RC screen, minimap with spray coverage, stick monitor, warnings.
 import type { Engine } from '../sim/engine';
 import { settings } from '../settings';
-import { FIELD, TREES, POLES, HOUSE, HOME, BOXES, CROWD, WORLD } from '../data/world';
+import { FIELD, TREES, POLES, HOUSE, HOME, BOXES, CROWD, WORLD, fenceBreach } from '../data/world';
 import { GRID } from '../sim/coverage';
 import { planLanes } from '../sim/mission';
 import { pulse } from './motion';
@@ -161,6 +161,7 @@ export class Hud {
     if (crashed) msgs.unshift('CRASH');
     if (e.sticks.kill) msgs.unshift('EMERGENCY STOP SWITCH ON');
     if (this.overCrowd) msgs.unshift('OVER PEOPLE — MOVE AWAY');
+    { const fb = fenceBreach(e.o('X'), e.o('Y')); if (fb > 0 && e.o('ARMED') > 0.5) msgs.unshift(`OUTSIDE FLY AREA (${fb.toFixed(0)} m)`); }
     this.cameraOsd(e, now);
     const wb = $('h-warn'); const wt = msgs.slice(0, 3).join(' · ');
     if (wt && wt !== wb.textContent) pulse(wb, true);
@@ -270,6 +271,11 @@ export class Hud {
     for (const b of BOXES) { g.fillStyle = b.kind === 'stage' ? '#8a1c2b' : b.kind === 'canopy' ? '#d94f2a' : '#e8e2d6'; g.fillRect(X(b.x - b.hx), Y(b.y + b.hy), b.hx * 2 * sc, b.hy * 2 * sc); }
     g.strokeStyle = '#ff4a4a'; g.lineWidth = 1.5;
     for (const c of CROWD) { g.fillStyle = 'rgba(255,60,60,0.25)'; g.fillRect(X(c.x0), Y(c.y1), (c.x1 - c.x0) * sc, (c.y1 - c.y0) * sc); g.strokeRect(X(c.x0), Y(c.y1), (c.x1 - c.x0) * sc, (c.y1 - c.y0) * sc); }
+    // fly area (geofence)
+    if (WORLD.geofence && WORLD.geofence.length > 2) {
+      g.strokeStyle = '#3bceac'; g.lineWidth = 2; g.setLineDash([5, 4]); g.beginPath();
+      WORLD.geofence.forEach(([x, y], i) => (i ? g.lineTo(X(x), Y(y)) : g.moveTo(X(x), Y(y)))); g.closePath(); g.stroke(); g.setLineDash([]);
+    }
     // flight trail: blue (oldest) → yellow (newest)
     const tn = this.trail.length;
     g.lineWidth = this.big ? 2.5 : 1.5;
