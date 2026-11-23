@@ -127,6 +127,7 @@ Update the checklist and the log at the end of every work block.
 - 2026-11-23: v0.7 (P13). 53 tests green, build clean.
 
 ## Lessons / working rules (grow this list)
+- Rebuilding `.next` under a running production server breaks it (old HTML, missing chunks → 500 → blank page). Restart the server after every build.
 - A WebGL context failure used to leave a blank page: the page now tests WebGL before importing the sim. Chrome disables the GPU process when memory runs out.
 - Phones on hotspots: WebRTC host candidates are mDNS-obfuscated and the Windows profile is Public → use an HTTP relay (SSE + MJPEG) through the server; it always works if the port is reachable.
 - Check the Windows network category (Get-NetConnectionProfile) when LAN devices can't connect; a Private-only firewall rule silently fails on Public networks.

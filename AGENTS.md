@@ -73,6 +73,7 @@ On Windows the user starts everything with `start-sim.cmd` (wraps `start-sim.ps1
 15. Camera drones (`drone.fc === 'dji'`) get the camera ground-station (`GcsUI.kind === 'cam'`). Auto take-off uses `engine.guided` (AUTO holding a point), then hands over to LOITER (`gcsMode = 2`).
 16. Real-map worlds can have more obstacles than physics slots: `obstacleList()` keeps the 96 nearest to the take-off area.
 17. UI style: menus and screens are neo-brutalist (`.screen`, `.pause` scoped CSS). The HUD and the tablet stay clean and dark — don't mix them.
+18. **After `next build`, restart any running `server.mjs`.** A production server started before the build serves HTML pointing at deleted chunks → JS 500 → blank page (happened 2026-11-23).
 12. Keep `MODES` order = WASM mode numbers (0 STAB, 1 ALTHOLD, 2 LOITER, 3 RTL, 4 LAND, 5 AUTO). Event codes ≥ 100 are mode changes.
 
 ## Adding things
