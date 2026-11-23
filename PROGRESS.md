@@ -127,6 +127,7 @@ Update the checklist and the log at the end of every work block.
 - 2026-11-23: v0.7 (P13). 53 tests green, build clean.
 
 ## Lessons / working rules (grow this list)
+- Never give an element both a CSS transform and GSAP xPercent/yPercent: GSAP parses the CSS translate into px x/y and adds its percent on top, so 'open' kept the tablet off-screen (G did nothing). Let GSAP own the transform and set x:0,y:0.
 - Rebuilding `.next` under a running production server breaks it (old HTML, missing chunks → 500 → blank page). Restart the server after every build.
 - A WebGL context failure used to leave a blank page: the page now tests WebGL before importing the sim. Chrome disables the GPU process when memory runs out.
 - Phones on hotspots: WebRTC host candidates are mDNS-obfuscated and the Windows profile is Public → use an HTTP relay (SSE + MJPEG) through the server; it always works if the port is reachable.

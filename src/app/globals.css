@@ -112,7 +112,7 @@ canvas.planner { width: 100%; max-width: 640px; aspect-ratio: 150 / 175; backgro
 /* ---------- ground-station tablet ---------- */
 .gcs { font-family: var(--sans); --g-bg: #0e1412; --g-line: #26332e; --g-acc: #1fa3ff; --g-ok: #3ccf7a; --g-bad: #ff5a4a; color: #e6efe9; font-size: 13px; line-height: 1.35; pointer-events: auto; }
 .gcs.embedded { position: fixed; left: 50%; bottom: 0; width: min(1180px, 97vw); height: min(720px, 88vh); z-index: 40;
-  transform: translate(-50%, 104%); will-change: transform; padding: 12px 12px 0; background: #121212; border-radius: 26px 26px 0 0;
+  will-change: transform; /* position owned by GSAP (xPercent/yPercent) — no CSS transform here */ padding: 12px 12px 0; background: #121212; border-radius: 26px 26px 0 0;
   box-shadow: 0 -12px 40px rgba(0,0,0,.55); border: 1px solid #2c2c2c; border-bottom: none; }
 
 .gcs.full { position: fixed; inset: 0; }

@@ -58,7 +58,8 @@ export class GcsUI {
         </div>
       </div>`;
     container.appendChild(this.root);
-    if (embedded) gsap.set(this.root, { xPercent: -50, yPercent: 104 });
+    // GSAP owns the transform: clear any pixel offset so only xPercent/yPercent move the sheet
+    if (embedded) gsap.set(this.root, { x: 0, y: 0, xPercent: -50, yPercent: 104 });
     this.map = this.root.querySelector('.gcs-map')!;
     this.root.querySelectorAll<HTMLButtonElement>('[data-z]').forEach((b) => (b.onclick = () => {
       const z = b.dataset.z;

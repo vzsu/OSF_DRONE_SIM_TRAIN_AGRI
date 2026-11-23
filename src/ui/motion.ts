@@ -46,10 +46,10 @@ export function toastOut(el: HTMLElement) {
 
 /** Bottom sheet (ground-station tablet): spring up, quick down. */
 export function sheet(el: HTMLElement, open: boolean) {
-  if (reduced()) { gsap.set(el, { xPercent: -50, yPercent: open ? 0 : 104 }); return; }
+  if (reduced()) { gsap.set(el, { x: 0, y: 0, xPercent: -50, yPercent: open ? 0 : 104 }); return; }
   gsap.to(el, open
-    ? { xPercent: -50, yPercent: 0, duration: 0.62, ease: 'expo.out' }
-    : { xPercent: -50, yPercent: 104, duration: 0.34, ease: 'power3.in' });
+    ? { x: 0, y: 0, xPercent: -50, yPercent: 0, duration: 0.62, ease: 'expo.out' }
+    : { x: 0, y: 0, xPercent: -50, yPercent: 104, duration: 0.34, ease: 'power3.in' });
 }
 
 /** Number tween (scores, stats). */
