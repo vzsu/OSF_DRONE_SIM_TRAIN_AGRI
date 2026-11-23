@@ -162,7 +162,11 @@ export class World3D {
 
   constructor(canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, this.hq ? 1.5 : 1));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, this.hq && !lowMemoryPC() ? 1.5 : 1));
+    // integrated GPUs share system RAM: if the GPU runs out, Chrome kills the context.
+    // Show what happened and reload when it comes back, instead of a frozen black screen.
+    canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); showGpuLost(); });
+    canvas.addEventListener('webglcontextrestored', () => location.reload());
     this.renderer.toneMapping = THREE.AgXToneMapping;
     this.renderer.toneMappingExposure = 1.05;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -196,7 +200,8 @@ export class World3D {
       this.setTimeOfDay(hour);
       return;
     }
-    const env = await loadHdri(this.renderer, id, this.hq);
+    // 4K HDRI ≈ 130 MB of GPU memory as float: only on PCs with more than 8 GB RAM
+    const env = await loadHdri(this.renderer, id, this.hq && !lowMemoryPC());
     if (this.envId !== id) return; // user switched again while loading
     this.skybox = env.skybox;
     this.scene.add(env.skybox);
@@ -792,6 +797,22 @@ export class World3D {
     this.gimbalQ.copy(this.camera.quaternion);
     for (let i = 0; i < this.N; i++) { this.pLife[i] = 0; this.pPos[i * 3 + 1] = -100; }
   }
+}
+
+/** ≤ 8 GB RAM (Chrome's navigator.deviceMemory) → integrated-GPU friendly settings. */
+export function lowMemoryPC(): boolean {
+  const dm = (navigator as Navigator & { deviceMemory?: number }).deviceMemory;
+  return dm === undefined || dm <= 8;
+}
+function showGpuLost() {
+  if (document.getElementById('gpu-lost')) return;
+  const d = document.createElement('div'); d.id = 'gpu-lost'; d.className = 'pause'; d.style.zIndex = '95';
+  d.innerHTML = `<div class="card" style="max-width:560px"><h2>Graphics memory ran out</h2>
+    <p>The graphics card (it shares your PC's RAM) ran out of memory and the browser stopped 3D.</p>
+    <ol><li>Close other programs (code editors, other browser tabs).</li><li>Settings → Display → <b>Low</b> quality, or Environment → <b>Simple sky</b>.</li>
+    <li>If it keeps happening: fully quit Chrome and start it again (Chrome turns 3D off after repeated crashes).</li></ol>
+    <button class="primary" onclick="location.reload()">Reload</button></div>`;
+  document.body.appendChild(d);
 }
 
 /** Radial soft-shadow texture (ambient occlusion / contact shadow). */
