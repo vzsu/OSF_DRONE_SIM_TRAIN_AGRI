@@ -15,6 +15,7 @@ export interface WorldGeo {
   trees: [number, number, number][]; poles: [number, number][]; wires: [number, number][][]; house: { x: number; y: number; hx: number; hy: number };
   boxes: { x: number; y: number; hx: number; hy: number; kind: string }[]; crowd: { x0: number; x1: number; y0: number; y1: number }[]; home: [number, number];
   geo: { lat: number; lon: number }; ground?: { url: string; x0: number; x1: number; y0: number; y1: number }; fieldPoly?: [number, number][]; geofence?: [number, number][];
+  roads?: [number, number][][]; water?: [number, number][][]; bpolys?: [number, number][][];
 }
 export interface Telemetry {
   t: number; drone: { name: string; tankCap: number; flowLpm: number; lowBatt: number; minSats: number; rtk: boolean; cells: number; camera: boolean };
@@ -58,6 +59,7 @@ export class GcsHost {
       house: { x: HOUSE.x, y: HOUSE.y, hx: HOUSE.hx, hy: HOUSE.hy }, boxes: BOXES.map((b) => ({ x: b.x, y: b.y, hx: b.hx, hy: b.hy, kind: b.kind })),
       crowd: CROWD.map((c) => ({ ...c })), home: [HOME.x, HOME.y],
       geo: WORLD.geo ?? GEO_BASE, ground: WORLD.ground, fieldPoly: WORLD.fieldPoly, geofence: WORLD.geofence,
+      roads: WORLD.roads, water: WORLD.water, bpolys: BOXES.filter((b) => b.poly).map((b) => b.poly!),
     };
   }
 

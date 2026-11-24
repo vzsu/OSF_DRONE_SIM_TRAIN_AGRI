@@ -345,7 +345,37 @@ export class World3D {
     };
     const fw = FIELD.x1 - FIELD.x0, fh = FIELD.y1 - FIELD.y0;
     const fcx = (FIELD.x0 + FIELD.x1) / 2, fcy = (FIELD.y0 + FIELD.y1) / 2;
-    if (WORLD.ground) {
+    if (WORLD.mockup) {
+      // real map as a clean MOCKUP: flat ground, roads, water, buildings as outlined footprint blocks
+      const groundM = new THREE.MeshStandardMaterial({ color: 0xc9d3b4, roughness: 1 });
+      const gp = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), groundM);
+      gp.rotation.x = -Math.PI / 2; gp.position.copy(v3(0, 45, 0.02)); gp.receiveShadow = true; gp.renderOrder = 3; s.add(gp);
+      const flat = (poly: [number, number][], color: number, z: number) => {
+        const sh = new THREE.Shape(poly.map(([x, y]) => new THREE.Vector2(x, y)));
+        const m = new THREE.Mesh(new THREE.ShapeGeometry(sh), new THREE.MeshStandardMaterial({ color, roughness: 0.9 }));
+        m.rotation.x = -Math.PI / 2; m.position.y = z; m.receiveShadow = true; m.renderOrder = 3; s.add(m); return m;
+      };
+      if (WORLD.fieldPoly) flat(WORLD.fieldPoly, 0xa9c27a, 0.03);
+      for (const wt of WORLD.water ?? []) flat(wt, 0x6fa8d6, 0.035);
+      const roadM = new THREE.MeshStandardMaterial({ color: 0xe8e2d3, roughness: 1 });
+      for (const rd of WORLD.roads ?? []) for (let i = 1; i < rd.length; i++) {
+        const [ax, ay] = rd[i - 1], [bx, by] = rd[i], L = Math.hypot(bx - ax, by - ay); if (L < 0.5) continue;
+        const seg = new THREE.Mesh(new THREE.PlaneGeometry(L + 1, 4), roadM);
+        seg.rotation.x = -Math.PI / 2; seg.rotation.z = Math.atan2(by - ay, bx - ax);
+        seg.position.copy(v3((ax + bx) / 2, (ay + by) / 2, 0.04)); seg.receiveShadow = true; seg.renderOrder = 3; s.add(seg);
+      }
+      if (WORLD.fieldPoly) this.buildCrops();
+      // buildings: real footprints extruded, light faces + dark outlines (architectural-model look)
+      const wallM = new THREE.MeshStandardMaterial({ color: 0xf1eee8, roughness: 0.95 });
+      const edgeM = new THREE.LineBasicMaterial({ color: 0x2b2b2b });
+      for (const b of BOXES) {
+        const poly = b.poly && b.poly.length >= 3 ? b.poly : [[b.x - b.hx, b.y - b.hy], [b.x + b.hx, b.y - b.hy], [b.x + b.hx, b.y + b.hy], [b.x - b.hx, b.y + b.hy]] as [number, number][];
+        const geo = new THREE.ExtrudeGeometry(new THREE.Shape(poly.map(([x, y]) => new THREE.Vector2(x, y))), { depth: b.h, bevelEnabled: false });
+        geo.rotateX(-Math.PI / 2); // shape XY → ground XZ (y north → −z), extrusion → up
+        const mesh = new THREE.Mesh(geo, wallM); mesh.castShadow = true; mesh.receiveShadow = true; s.add(mesh);
+        const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo, 20), edgeM); s.add(edges);
+      }
+    } else if (WORLD.ground) {
       // real map: satellite picture as the ground, OSM buildings, crops inside the real field outline
       const gd = WORLD.ground;
       const t = texLoader.load(gd.url); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;

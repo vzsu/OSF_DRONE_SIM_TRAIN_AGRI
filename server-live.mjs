@@ -11,6 +11,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import QRCode from 'qrcode';
+import dns from 'node:dns';
+
+// phone hotspots often have broken IPv6 routes: try IPv4 first for the map/tile servers
+dns.setDefaultResultOrder('ipv4first');
 
 const UA = 'OSF-Drone-Trainer/0.6 (offline-capable LAN training simulator)';
 // Chhattisgarh bounding box (with a small margin)
@@ -152,16 +156,26 @@ async function geo(req, res, parts) {
     if (s < CG.s || n > CG.n || w < CG.w || e > CG.e) return json(res, 400, { error: 'Only areas inside Chhattisgarh are supported' });
     const key = [s, w, n, e].map((v) => v.toFixed(5)).join('_');
     const file = path.join(DATA, 'osm', `${key}.json`);
-    try { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(fs.readFileSync(file)); } catch { /* fetch */ }
+    // read the cache BEFORE sending headers (a missing file used to throw after writeHead → hung request / crash)
+    let cached = null;
+    try { cached = fs.readFileSync(file); } catch { /* not cached yet */ }
+    if (cached) { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(cached); }
     const bb = `${s},${w},${n},${e}`;
     const ql = `[out:json][timeout:25];(way["building"](${bb});node["natural"="tree"](${bb});way["natural"~"^(wood|tree_row|scrub|water)$"](${bb});way["landuse"~"^(forest|orchard|farmland|meadow|grass|village_green|residential)$"](${bb});way["power"~"^(line|minor_line)$"](${bb});node["power"~"^(tower|pole)$"](${bb});way["highway"](${bb});way["waterway"](${bb}););out body;>;out skel qt;`;
-    try {
-      const r = await fetch('https://overpass-api.de/api/interpreter', { method: 'POST', headers: { 'user-agent': UA, 'content-type': 'application/x-www-form-urlencoded' }, body: 'data=' + encodeURIComponent(ql), signal: AbortSignal.timeout(45000) });
-      if (!r.ok) return json(res, 502, { error: `map data server busy (${r.status}) — try again in a minute` });
-      const b = Buffer.from(await r.arrayBuffer());
-      fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, b);
-      res.writeHead(200, { 'content-type': 'application/json' }); return res.end(b);
-    } catch { return json(res, 502, { error: 'map data unavailable (offline?)' }); }
+    // free public Overpass servers are often busy: try mirrors in turn
+    const MIRRORS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://overpass.private.coffee/api/interpreter'];
+    let last = 'map data unavailable (offline?)';
+    for (const url of MIRRORS) {
+      try {
+        const r = await fetch(url, { method: 'POST', headers: { 'user-agent': UA, 'content-type': 'application/x-www-form-urlencoded' }, body: 'data=' + encodeURIComponent(ql), signal: AbortSignal.timeout(20000) });
+        if (!r.ok) { last = r.status === 502 || r.status === 504 || r.status === 429 ? 'the free OpenStreetMap server is at capacity right now' : `map data server error (${r.status})`; continue; }
+        const b = Buffer.from(await r.arrayBuffer());
+        if (!b.subarray(0, 200).toString().includes('"elements"')) { last = 'map data server returned an error page'; continue; }
+        fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, b);
+        res.writeHead(200, { 'content-type': 'application/json' }); return res.end(b);
+      } catch { /* next mirror */ }
+    }
+    return json(res, 502, { error: last });
   }
   return json(res, 404, { error: 'not found' });
 }
@@ -171,9 +185,12 @@ export function extraRoutes(lan) {
   return (req, res) => {
     const p = (req.url ?? '').split('?')[0];
     const parts = p.split('/');
-    if (parts[1] === 'live') { void live(req, res, parts, lan); return true; }
-    if (parts[1] === 'tiles') { void tiles(req, res, parts); return true; }
-    if (parts[1] === 'geo') { void geo(req, res, parts); return true; }
+    // never let one failing request crash the whole training server
+    const guard = (p) => p.catch((e) => { console.error('[route]', p0, e?.message ?? e); try { if (!res.headersSent) json(res, 500, { error: 'server error' }); else res.end(); } catch { /* closed */ } });
+    const p0 = p;
+    if (parts[1] === 'live') { guard(live(req, res, parts, lan)); return true; }
+    if (parts[1] === 'tiles') { guard(tiles(req, res, parts)); return true; }
+    if (parts[1] === 'geo') { guard(geo(req, res, parts)); return true; }
     return false;
   };
 }

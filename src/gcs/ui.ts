@@ -177,7 +177,13 @@ export class GcsUI {
     // hazards: trees, buildings, tents, crowd, power / light lines
     for (const [x, y, cr] of w.trees) { const [a, b] = P(x, y); g.fillStyle = '#1f3f1a'; g.beginPath(); g.arc(a, b, cr * s, 0, 7); g.fill(); g.strokeStyle = 'rgba(255,200,60,0.5)'; g.setLineDash([3, 3]); g.beginPath(); g.arc(a, b, (cr + 5) * s, 0, 7); g.stroke(); g.setLineDash([]); }
     { const h = w.house; const [a, b] = P(h.x - h.hx, h.y + h.hy); g.fillStyle = '#b09878'; g.fillRect(a, b, h.hx * 2 * s, h.hy * 2 * s); }
-    for (const bx of w.boxes) { const [a, b] = P(bx.x - bx.hx, bx.y + bx.hy); g.fillStyle = bx.kind === 'stage' ? '#8a1c2b' : bx.kind === 'canopy' ? '#d94f2a' : '#e8e2d6'; g.fillRect(a, b, bx.hx * 2 * s, bx.hy * 2 * s); }
+    // mockup map: water, roads, real building outlines
+    const path = (pts: [number, number][], close: boolean) => { g.beginPath(); pts.forEach(([x, y], i) => { const [a, b] = P(x, y); i ? g.lineTo(a, b) : g.moveTo(a, b); }); if (close) g.closePath(); };
+    g.fillStyle = '#4f86b5'; for (const wt of w.water ?? []) { path(wt, true); g.fill(); }
+    g.strokeStyle = '#d9d2bf'; g.lineWidth = Math.max(2, 4 * s); g.lineCap = 'round'; for (const rd of w.roads ?? []) { path(rd, false); g.stroke(); }
+    g.fillStyle = 'rgba(240,236,228,0.85)'; g.strokeStyle = '#222'; g.lineWidth = 1.2; for (const bp of w.bpolys ?? []) { path(bp, true); g.fill(); g.stroke(); }
+    for (const bx of w.boxes) {
+      if (bx.kind === 'building' && w.bpolys?.length) continue; const [a, b] = P(bx.x - bx.hx, bx.y + bx.hy); g.fillStyle = bx.kind === 'stage' ? '#8a1c2b' : bx.kind === 'canopy' ? '#d94f2a' : '#e8e2d6'; g.fillRect(a, b, bx.hx * 2 * s, bx.hy * 2 * s); }
     for (const cw of w.crowd) { const [a, b] = P(cw.x0, cw.y1); g.fillStyle = 'rgba(255,50,50,0.25)'; g.strokeStyle = '#ff4a4a'; g.fillRect(a, b, (cw.x1 - cw.x0) * s, (cw.y1 - cw.y0) * s); g.strokeRect(a, b, (cw.x1 - cw.x0) * s, (cw.y1 - cw.y0) * s); g.fillStyle = '#ff8080'; g.fillText('NO-FLY: PEOPLE', a + 3, b + 12); }
     g.strokeStyle = '#ff5a3a'; g.lineWidth = 2; g.setLineDash([8, 5]);
     for (const [a, b] of w.wires) { const [x1, y1] = P(a[0], a[1]), [x2, y2] = P(b[0], b[1]); g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke(); }

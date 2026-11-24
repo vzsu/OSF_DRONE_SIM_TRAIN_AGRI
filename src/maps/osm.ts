@@ -64,7 +64,7 @@ export function worldFromOsm(osm: OsmJson, lat0: number, lon0: number, name: str
     if (!clearOfPad(cx, cy, Math.hypot(hx, hy))) continue;
     const lv = parseFloat(w.tags['building:levels'] ?? '');
     const h = Number.isFinite(lv) ? Math.min(lv * 3.2, 30) : w.tags.building === 'house' || w.tags.building === 'hut' ? 3.5 + r() * 2 : 4 + r() * 4;
-    boxes.push({ x: cx, y: cy, hx: Math.min(hx, 30), hy: Math.min(hy, 30), h, kind: 'building' });
+    boxes.push({ x: cx, y: cy, hx: Math.min(hx, 30), hy: Math.min(hy, 30), h, kind: 'building', poly: p.slice(0, p.length > 3 && p[0][0] === p[p.length - 1][0] && p[0][1] === p[p.length - 1][1] ? -1 : undefined).map(([x, y]) => [+x.toFixed(2), +y.toFixed(2)] as Pt) });
   }
   boxes.sort((a, b) => Math.hypot(a.x, a.y) - Math.hypot(b.x, b.y));
 
@@ -109,6 +109,15 @@ export function worldFromOsm(osm: OsmJson, lat0: number, lon0: number, name: str
     }
   }
 
+  // roads and water for the mockup ground (visual only)
+  const roads: Pt[][] = [], water: Pt[][] = [];
+  for (const w of ways) {
+    const t = w.tags ?? {};
+    const p = pts(w); if (p.length < 2 || !p.some((q) => inBox(q, 60))) continue;
+    if (t.highway && roads.length < 40) roads.push(p.map(([x, y]) => [+x.toFixed(1), +y.toFixed(1)] as Pt));
+    else if ((t.natural === 'water' || t.waterway === 'riverbank') && p.length > 3 && water.length < 10) water.push(p.map(([x, y]) => [+x.toFixed(1), +y.toFixed(1)] as Pt));
+  }
+
   // farmland: the largest field touching the box becomes the spray field
   let fieldPoly: Pt[] | undefined;
   let best = 0;
@@ -130,7 +139,7 @@ export function worldFromOsm(osm: OsmJson, lat0: number, lon0: number, name: str
     field, fieldPoly, trees: trees.slice(0, 30), poles: poles.slice(0, 10), wires: wires.slice(0, 24),
     house: { x: 1e4, y: 1e4, hx: 0.1, hy: 0.1, h: 0.1 }, waterTank: null,
     boxes: boxes.slice(0, 22), pillars: [], crowd: [], people: [],
-    geo: { lat: lat0, lon: lon0 },
+    geo: { lat: lat0, lon: lon0 }, mockup: true, roads, water,
     stats: { buildings: boxes.length, trees: trees.length, poles: poles.length, fieldM2: Math.round(best) },
   };
 }

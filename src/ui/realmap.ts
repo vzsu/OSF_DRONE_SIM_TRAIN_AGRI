@@ -6,7 +6,7 @@ import L from 'leaflet';
 import { mount, header, wireNav } from './screens';
 import { settings, saveSettings } from '../settings';
 import { ENV_PRESETS } from '../sim/wasm';
-import { worldFromOsm, groundImage, bboxFor, enu, BOX, GROUND, type OsmJson } from '../maps/osm';
+import { worldFromOsm, bboxFor, enu, BOX, type OsmJson } from '../maps/osm';
 import { currentUser } from '../auth/client';
 
 type Nav = (screen: string, arg?: unknown) => void;
@@ -34,10 +34,12 @@ export function realMapScreen(nav: Nav) {
         <div class="rm-tools">
           <button id="rm-tpin" class="tool on" title="Click the map to place the take-off point">📍 Pin home</button>
           <button id="rm-tarea" class="tool" title="Click the map to add corners of the area you may fly / spray">▱ Draw fly area</button>
+          <button id="rm-tbld" class="tool" title="Click the map to add a building (outline block)">🏠 Add building</button>
+          <button id="rm-ttree" class="tool" title="Click the map to add a tree">🌳 Add tree</button>
           <button id="rm-undo" class="small">Undo point</button><button id="rm-clear" class="small danger">Clear area</button>
         </div>
         <p class="small" id="rm-hint">Choose a tool, then click on the map. Drag the pin or any corner to adjust.</p>
-        <div class="kv small" id="rm-stats"><span>Home</span><span class="mono" id="rm-pos">not placed</span><span>Fly area</span><span id="rm-area">not drawn (optional)</span></div>
+        <div class="kv small" id="rm-stats"><span>Home</span><span class="mono" id="rm-pos">not placed</span><span>Fly area</span><span id="rm-area">not drawn (optional)</span><span>Your objects</span><span id="rm-objs">none — OpenStreetMap data is added when available</span></div>
         <h3>3 · Weather</h3>
         <div class="row" id="rm-w">${Object.keys(ENV_PRESETS).map((k) => `<button data-w="${k}" class="${k === weather ? 'on' : ''}">${PRESET_NAMES[k]}</button>`).join('')}</div>
         <h3>4 · Save</h3>
@@ -59,7 +61,8 @@ export function realMapScreen(nav: Nav) {
   $('rm-sat').onclick = () => { m.removeLayer(osm); sat.addTo(m); $('rm-sat').classList.add('on'); $('rm-osm').classList.remove('on'); };
   $('rm-osm').onclick = () => { m.removeLayer(sat); osm.addTo(m); $('rm-osm').classList.add('on'); $('rm-sat').classList.remove('on'); };
   // ---- tools: pin the home point, draw the fly area (geofence + spray area) ----
-  let tool: 'pin' | 'area' = 'pin';
+  let tool: 'pin' | 'area' | 'bld' | 'tree' = 'pin';
+  const myBuildings: { m: L.Marker }[] = [], myTrees: { m: L.Marker }[] = [];
   let rect: L.Rectangle | null = null, mark: L.Marker | null = null;
   let area: L.LatLng[] = [];
   let poly: L.Polygon | null = null;
@@ -70,10 +73,25 @@ export function realMapScreen(nav: Nav) {
   const setTool = (t: typeof tool) => {
     tool = t;
     $('rm-tpin').classList.toggle('on', t === 'pin'); $('rm-tarea').classList.toggle('on', t === 'area');
+    $('rm-tbld').classList.toggle('on', t === 'bld'); $('rm-ttree').classList.toggle('on', t === 'tree');
     $('rm-map').classList.toggle('drawing', true);
-    $('rm-hint').textContent = t === 'pin' ? 'Click where the pilot takes off. The orange box (160 × 190 m) is the 3D training ground.' : 'Click to add corners of the fly area (min. 3). Drag a corner to move it.';
+    $('rm-hint').textContent = t === 'pin' ? 'Click where the pilot takes off. The orange box (160 × 190 m) is the 3D training ground.'
+      : t === 'area' ? 'Click to add corners of the fly area (min. 3). Drag a corner to move it.'
+      : t === 'bld' ? 'Click to place a building (10 × 8 m, 4 m high). Drag to move, right-click to delete.'
+      : 'Click to place a tree. Drag to move, right-click to delete.';
   };
   $('rm-tpin').onclick = () => setTool('pin');
+  $('rm-tbld').onclick = () => { if (!home) { $('rm-hint').textContent = 'Pin the home point first.'; return; } setTool('bld'); };
+  $('rm-ttree').onclick = () => { if (!home) { $('rm-hint').textContent = 'Pin the home point first.'; return; } setTool('tree'); };
+  const objIcon = (kind: 'bld' | 'tree') => L.divIcon({ className: kind === 'bld' ? 'rm-bld' : 'rm-tree', html: '', iconSize: kind === 'bld' ? [22, 18] : [16, 16] });
+  const updateObjs = () => { $('rm-objs').textContent = myBuildings.length || myTrees.length ? `${myBuildings.length} buildings · ${myTrees.length} trees` : 'none — OpenStreetMap data is added when available'; };
+  const addObj = (kind: 'bld' | 'tree', ll: L.LatLng) => {
+    const list = kind === 'bld' ? myBuildings : myTrees;
+    const mk = L.marker(ll, { icon: objIcon(kind), draggable: true }).addTo(m);
+    const item = { m: mk };
+    mk.on('contextmenu', () => { mk.remove(); list.splice(list.indexOf(item), 1); updateObjs(); });
+    list.push(item); updateObjs();
+  };
   $('rm-tarea').onclick = () => { if (!home) { $('rm-hint').textContent = 'Pin the home point first.'; return; } setTool('area'); };
   $('rm-undo').onclick = () => { area.pop(); redrawArea(); };
   $('rm-clear').onclick = () => { area = []; redrawArea(); };
@@ -124,7 +142,8 @@ export function realMapScreen(nav: Nav) {
       placeHome(lat, lng);
       if (m.getZoom() < 16) m.setView([lat + 0.0004, lng], 17);
       if (!area.length) setTool('area'); // next natural step
-    } else { area.push(ev.latlng); redrawArea(); }
+    } else if (tool === 'area') { area.push(ev.latlng); redrawArea(); }
+    else addObj(tool, ev.latlng);
   });
   setTool('pin');
   setTimeout(() => m.invalidateSize(), 50);
@@ -152,12 +171,31 @@ export function realMapScreen(nav: Nav) {
     const prog = $('rm-prog');
     const name = $<HTMLInputElement>('rm-name').value.trim() || `Field ${home[0].toFixed(4)}, ${home[1].toFixed(4)}`;
     try {
-      prog.textContent = '1/3 Downloading trees, buildings, power lines and fields (OpenStreetMap)…';
+      prog.textContent = '1/2 Downloading buildings, trees, roads, power lines (OpenStreetMap)…';
       const bb = bboxFor(home[0], home[1], { x0: BOX.x0 - 30, x1: BOX.x1 + 30, y0: BOX.y0 - 30, y1: BOX.y1 + 30 });
-      const r = await fetch(`/geo/osm?s=${bb.s}&w=${bb.w}&n=${bb.n}&e=${bb.e}`);
-      const osmData = (await r.json()) as OsmJson & { error?: string };
-      if (!r.ok) throw new Error(osmData.error ?? 'map data unavailable');
+      let osmData: OsmJson = { elements: [] }, note = '';
+      try {
+        const r = await fetch(`/geo/osm?s=${bb.s}&w=${bb.w}&n=${bb.n}&e=${bb.e}`);
+        const j = (await r.json()) as OsmJson & { error?: string };
+        if (r.ok) osmData = j; else note = j.error ?? 'map data unavailable';
+      } catch { note = 'map data unavailable'; }
       const w = worldFromOsm(osmData, home[0], home[1], name);
+      // your own buildings and trees (always included; they work even when OSM is unavailable)
+      {
+        const c = enu(home[0], home[1]);
+        for (const b of myBuildings) {
+          const [x, y] = c.to(b.m.getLatLng().lat, b.m.getLatLng().lng);
+          if (Math.hypot(x, y) < 10) continue; // keep the pad clear
+          w.boxes.unshift({ x, y, hx: 5, hy: 4, h: 4, kind: 'building', poly: [[x - 5, y - 4], [x + 5, y - 4], [x + 5, y + 4], [x - 5, y + 4]] });
+        }
+        for (const t of myTrees) {
+          const [x, y] = c.to(t.m.getLatLng().lat, t.m.getLatLng().lng);
+          if (Math.hypot(x, y) < 6) continue;
+          w.trees.unshift({ x, y, trunkH: 3.5, crownR: 2.8 });
+        }
+        w.boxes = w.boxes.slice(0, 22); w.trees = w.trees.slice(0, 30);
+        w.stats.buildings = w.boxes.length; w.stats.trees = w.trees.length;
+      }
       if (area.length >= 3) {
         const c = enu(home[0], home[1]);
         const pts = area.map((p) => { const [x, y] = c.to(p.lat, p.lng); return [Math.max(BOX.x0, Math.min(BOX.x1, x)), Math.max(BOX.y0, Math.min(BOX.y1, y))] as [number, number]; });
@@ -165,16 +203,14 @@ export function realMapScreen(nav: Nav) {
         const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
         w.field = { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys), rowSpacing: 1.2 };
       }
-      prog.textContent = '2/3 Building the satellite ground picture…';
-      const img = await groundImage(home[0], home[1]);
-      prog.textContent = '3/3 Saving…';
+      prog.textContent = '2/2 Saving…';
       const { stats, ...world } = w;
-      world.ground = { url: '', ...GROUND };
+      const img = '';
       const env = { ...ENV_PRESETS[weather] };
       const sr = await fetch('/api/maps', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name, lat: home[0], lon: home[1], env, stats, world, ground: img }) });
       const saved = (await sr.json()) as MapMeta & { error?: string };
       if (!sr.ok) throw new Error(saved.error ?? 'save failed');
-      prog.innerHTML = `Saved <b>${esc(saved.name)}</b>: ${stats.buildings} buildings, ${stats.trees} trees, ${stats.poles} power poles, field ${stats.fieldM2 ? (stats.fieldM2 / 10000).toFixed(2) + ' ha' : 'not mapped (default area)'}.
+      prog.innerHTML = `${note ? `<span class="bad">OpenStreetMap: ${esc(note)} — built with your own area, buildings and trees only.</span><br>` : ''}Saved <b>${esc(saved.name)}</b>: ${stats.buildings} buildings, ${stats.trees} trees, ${stats.poles} power poles, field ${stats.fieldM2 ? (stats.fieldM2 / 10000).toFixed(2) + ' ha' : 'not mapped (default area)'}.
         <div class="row" style="margin-top:8px"><button class="primary" id="rm-fly">Fly here now</button></div>`;
       $('rm-fly').onclick = () => flyMap(saved, nav);
       void loadList();

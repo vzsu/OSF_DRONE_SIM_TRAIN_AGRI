@@ -214,7 +214,8 @@ Home → **Real map — Chhattisgarh**:
    **▱ Draw fly area:** pick this tool and click the corners of the area you may fly / spray (min. 3). Drag the numbered corners to adjust; *Undo point* / *Clear area*; right-click a corner deletes it. Hectares and perimeter update live, with a warning if the area leaves the 3D box.
    The fly area becomes the **spray area** and a **geofence**: in flight it is drawn on the map and tablet, the HUD warns *OUTSIDE FLY AREA*, more than 3 m outside triggers **return home**, and the debrief scores time outside.
 3. Pick the **weather** for this map.
-4. Give it a name and press **Build training ground**:
+   **🏠 Add building / 🌳 Add tree:** click to place your own buildings (outline blocks) and trees; drag to move, right-click to delete. They are always included — use them when OpenStreetMap has no data for the village or its server is busy.
+4. Give it a name and press **Build training ground** (a clean **mockup**: flat ground, roads, water, buildings as outlined blocks from their real footprints, normal trees — no satellite picture):
    - **trees, buildings and power lines** are downloaded from OpenStreetMap;
    - the **largest mapped farmland** becomes the spray field (otherwise a default area is used, which you can redraw in the planner);
    - a 400 × 400 m **satellite picture** becomes the ground.

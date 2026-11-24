@@ -20,6 +20,8 @@ describe('real map → training ground', () => {
     expect(w.fieldPoly?.length).toBe(4);
     expect(w.field.x0).toBeCloseTo(-40, 0); expect(w.field.y1).toBeCloseTo(100, 0);
     expect(w.boxes.length).toBe(1);
+    expect(w.mockup).toBe(true);
+    expect(w.boxes[0].poly?.length).toBe(4); // real footprint kept for the outline mockup
     expect(w.trees.length).toBe(2);
     expect(w.poles.length).toBe(3);
     expect(w.wires.length).toBe(4);
