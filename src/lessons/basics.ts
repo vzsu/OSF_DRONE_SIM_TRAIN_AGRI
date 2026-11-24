@@ -8,13 +8,13 @@ import type { LessonDef, ObjView, Marker } from './lessons';
 export const BASICS: LessonDef[] = [
   { id: 'b1', n: 1, title: 'Take-off and landing', level: 'Basic', kind: 'any', track: 'basic', timeLimit: 180, brief: 'Arm, climb gently to 2 m, hover 3 s, descend slowly and land, then disarm.' },
   { id: 'b2', n: 2, title: 'In-flight control check', level: 'Basic', kind: 'any', track: 'basic', timeLimit: 180, brief: 'At 3 m give VERY small inputs: a little yaw, a little pitch, a little roll — check each one answers. Then land.' },
-  { id: 'b3', n: 3, title: 'Pitch forward and back', level: 'Basic', kind: 'any', track: 'basic', timeLimit: 180, brief: 'Pitch forward about 5 m, then pitch back to the same place and hover.' },
-  { id: 'b4', n: 4, title: 'Roll right and left', level: 'Basic', kind: 'any', track: 'basic', timeLimit: 240, brief: 'Roll right 5 m and back, then roll left 5 m and back to the start.' },
-  { id: 'b5', n: 5, title: 'Square', level: 'Basic', kind: 'any', track: 'basic', timeLimit: 300, brief: 'Pitch forward, roll right, pitch back, roll left — finish where you started (gates show the corners).' },
-  { id: 'b6', n: 6, title: 'Right circle', level: 'Basic', kind: 'any', track: 'basic', timeLimit: 240, brief: 'Slight pitch forward with slight yaw right at the same time: fly one full circle to the right.' },
-  { id: 'b7', n: 7, title: 'Left circle', level: 'Basic', kind: 'any', track: 'basic', timeLimit: 240, brief: 'Slight pitch forward with slight yaw left at the same time: fly one full circle to the left.' },
-  { id: 'b8', n: 8, title: 'Figure 8', level: 'Intermediate', kind: 'any', track: 'basic', timeLimit: 360, brief: 'A right circle followed by a left circle — an 8 — and back to the start.' },
-  { id: 'b9', n: 9, title: 'Spiral climb', level: 'Intermediate', kind: 'any', track: 'basic', timeLimit: 300, brief: 'Pitch forward with slight yaw and a little more throttle: one full turn while climbing at least 3 m.' },
+  { id: 'b3', n: 3, title: 'Pitch forward and back', level: 'Basic', kind: 'any', track: 'basic', timeLimit: 180, brief: 'Pitch forward 10 m (to the cone), then pitch back to the same place and hover.' },
+  { id: 'b4', n: 4, title: 'Roll right and left', level: 'Basic', kind: 'any', track: 'basic', timeLimit: 240, brief: 'Roll right 10 m and back, then roll left 10 m and back to the start.' },
+  { id: 'b5', n: 5, title: 'Square', level: 'Basic', kind: 'any', track: 'basic', timeLimit: 300, brief: 'A 15 m square: pitch forward, roll right, pitch back, roll left — finish where you started (cones mark the corners).' },
+  { id: 'b6', n: 6, title: 'Right circle', level: 'Basic', kind: 'any', track: 'basic', timeLimit: 300, brief: 'Slight pitch forward with slight yaw right at the same time: one wide circle to the right (at least 14 m across).' },
+  { id: 'b7', n: 7, title: 'Left circle', level: 'Basic', kind: 'any', track: 'basic', timeLimit: 300, brief: 'Slight pitch forward with slight yaw left at the same time: one wide circle to the left (at least 14 m across).' },
+  { id: 'b8', n: 8, title: 'Figure 8', level: 'Intermediate', kind: 'any', track: 'basic', timeLimit: 480, brief: 'A wide right circle followed by a wide left circle — an 8 — and back to the start.' },
+  { id: 'b9', n: 9, title: 'Spiral climb', level: 'Intermediate', kind: 'any', track: 'basic', timeLimit: 360, brief: 'Pitch forward with slight yaw and a little more throttle: one wide turn (12 m+ across) while climbing at least 3 m.' },
   { id: 'b10', n: 10, title: 'Bring it home', level: 'Intermediate', kind: 'any', track: 'basic', timeLimit: 240, brief: 'The drone starts somewhere in the air. Fly it back and land on the pad.' },
 ];
 
@@ -28,6 +28,7 @@ export class BasicLesson {
   markers: Marker[] = [];
   step = 0;
   private hold = 0; private ox = 0; private oy = 0; private oyaw = 0; private z0 = 0;
+  private span = 0; // widest distance from the start during a circle / spiral (size check)
   private turn = 0; private turnR = 0; private turnL = 0; private lastYaw = NaN; private maxDesc = 0; private origin = false;
   constructor(public id: string) { this.build(); }
 
@@ -37,13 +38,13 @@ export class BasicLesson {
     switch (this.id) {
       case 'b1': this.objectives = [O('Arm and climb to 2 m'), O('Hover steady — 3 s'), land]; break;
       case 'b2': this.objectives = [climb, O('Small yaw input — the nose turns'), O('Small pitch input — the drone tilts'), O('Small roll input — the drone tilts'), land]; break;
-      case 'b3': this.objectives = [climb, O('Pitch forward ≥ 5 m'), O('Pitch back to the start (< 1.5 m)'), land]; break;
-      case 'b4': this.objectives = [climb, O('Roll right ≥ 5 m'), O('Roll back to the start'), O('Roll left ≥ 5 m'), O('Roll back to the start'), land]; break;
-      case 'b5': this.objectives = [climb, O('Pitch forward to gate 1'), O('Roll right to gate 2'), O('Pitch back to gate 3'), O('Roll left — back to the start'), land]; break;
-      case 'b6': this.objectives = [climb, O('One full circle to the RIGHT'), O('Back near the start (< 5 m)'), land]; break;
-      case 'b7': this.objectives = [climb, O('One full circle to the LEFT'), O('Back near the start (< 5 m)'), land]; break;
-      case 'b8': this.objectives = [climb, O('Right circle'), O('Left circle'), O('Back near the start (< 5 m)'), land]; break;
-      case 'b9': this.objectives = [climb, O('Spiral: one full turn while climbing ≥ 3 m'), land]; break;
+      case 'b3': this.objectives = [climb, O('Pitch forward ≥ 10 m'), O('Pitch back to the start (< 2 m)'), land]; break;
+      case 'b4': this.objectives = [climb, O('Roll right ≥ 10 m'), O('Roll back to the start'), O('Roll left ≥ 10 m'), O('Roll back to the start'), land]; break;
+      case 'b5': this.objectives = [climb, O('Pitch forward 15 m to cone 1'), O('Roll right 15 m to cone 2'), O('Pitch back 15 m to cone 3'), O('Roll left — back to the start'), land]; break;
+      case 'b6': this.objectives = [climb, O('One wide circle to the RIGHT (≥ 14 m across)'), O('Back near the start (< 6 m)'), land]; break;
+      case 'b7': this.objectives = [climb, O('One wide circle to the LEFT (≥ 14 m across)'), O('Back near the start (< 6 m)'), land]; break;
+      case 'b8': this.objectives = [climb, O('Wide right circle'), O('Wide left circle'), O('Back near the start (< 6 m)'), land]; break;
+      case 'b9': this.objectives = [climb, O('Spiral: one wide turn while climbing ≥ 3 m'), land]; break;
       case 'b10': this.objectives = [O('Fly back to the pad'), O('Land on the pad (< 1.5 m, gentle)')];
         this.markers = [{ x: 0, y: 0, z: 0, r: 1.5, kind: 'pad', state: 'next' }]; break;
     }
@@ -65,9 +66,12 @@ export class BasicLesson {
   }
   private world(f: number, r: number): [number, number] { const c = Math.cos(this.oyaw), s = Math.sin(this.oyaw); return [this.ox + f * c + r * s, this.oy + f * s - r * c]; }
   private placeGates() {
-    if (this.id !== 'b5') { if (this.id !== 'b10') this.markers = [{ x: this.ox, y: this.oy, z: 0, r: 1.5, kind: 'pad', state: 'idle' }]; return; }
-    const pts: [number, number][] = [[6, 0], [6, 6], [0, 6]];
-    this.markers = pts.map(([f, r], i) => { const [x, y] = this.world(f, r); return { x, y, z: 3, r: 1.8, kind: 'gate' as const, state: i === 0 ? 'next' as const : 'idle' as const }; });
+    const cone = (f: number, r: number, state: Marker['state'], rad = 2.5): Marker => { const [x, y] = this.world(f, r); return { x, y, z: 0, r: rad, kind: 'gate', state }; };
+    const start: Marker = { x: this.ox, y: this.oy, z: 0, r: 2, kind: 'pad', state: 'idle' };
+    if (this.id === 'b5') { this.markers = [cone(15, 0, 'next'), cone(15, 15, 'idle'), cone(0, 15, 'idle')]; return; }
+    if (this.id === 'b3') { this.markers = [start, cone(10, 0, 'next')]; return; }
+    if (this.id === 'b4') { this.markers = [start, cone(0, 10, 'next'), cone(0, -10, 'idle')]; return; }
+    if (this.id !== 'b10') this.markers = [start];
   }
 
   /** Grade one frame. Returns 'pass' | 'fail:<reason>' | ''. */
@@ -108,16 +112,16 @@ export class BasicLesson {
       }
       case 'b3':
         if (this.step === 0) climbTo(3);
-        else if (this.step === 1) { prog(1, f / 5); if (f >= 5) { done(1); this.step = 2; } }
-        else if (this.step === 2) { prog(2, 1 - Math.abs(f) / 5); if (near(1.5) && o('GNDSPEED') < 0.6) { done(2); this.step = 3; } }
+        else if (this.step === 1) { prog(1, f / 10); if (f >= 10) { done(1); this.step = 2; this.markers[1].state = 'done'; this.markers[0].state = 'next'; } }
+        else if (this.step === 2) { prog(2, 1 - Math.abs(f) / 10); if (near(2) && o('GNDSPEED') < 0.6) { done(2); this.step = 3; this.markers[0].state = 'done'; } }
         else return finishLand();
         break;
       case 'b4':
         if (this.step === 0) climbTo(3);
-        else if (this.step === 1) { prog(1, r / 5); if (r >= 5) { done(1); this.step = 2; } }
-        else if (this.step === 2) { prog(2, 1 - Math.abs(r) / 5); if (near(1.5)) { done(2); this.step = 3; } }
-        else if (this.step === 3) { prog(3, -r / 5); if (r <= -5) { done(3); this.step = 4; } }
-        else if (this.step === 4) { prog(4, 1 - Math.abs(r) / 5); if (near(1.5) && o('GNDSPEED') < 0.6) { done(4); this.step = 5; } }
+        else if (this.step === 1) { prog(1, r / 10); if (r >= 10) { done(1); this.step = 2; this.markers[1].state = 'done'; } }
+        else if (this.step === 2) { prog(2, 1 - Math.abs(r) / 10); if (near(2)) { done(2); this.step = 3; this.markers[2].state = 'next'; } }
+        else if (this.step === 3) { prog(3, -r / 10); if (r <= -10) { done(3); this.step = 4; this.markers[2].state = 'done'; } }
+        else if (this.step === 4) { prog(4, 1 - Math.abs(r) / 10); if (near(2) && o('GNDSPEED') < 0.6) { done(4); this.step = 5; } }
         else return finishLand();
         break;
       case 'b5': {
@@ -125,25 +129,32 @@ export class BasicLesson {
         if (this.step <= 3) {
           const g = this.markers[this.step - 1];
           const dist = Math.hypot(o('X') - g.x, o('Y') - g.y);
-          prog(this.step, 1 - dist / 6);
+          prog(this.step, 1 - dist / 15);
           if (dist < g.r) { done(this.step); g.state = 'done'; if (this.markers[this.step]) this.markers[this.step].state = 'next'; this.step++; }
-        } else if (this.step === 4) { prog(4, 1 - Math.hypot(f, r) / 6); if (near(2)) { done(4); this.step = 5; } }
+        } else if (this.step === 4) { prog(4, 1 - Math.hypot(f, r) / 15); if (near(3)) { done(4); this.step = 5; } }
         else return finishLand();
         break;
       }
       case 'b6': case 'b7': {
         if (this.step === 0) { climbTo(3); this.turnR = 0; this.turnL = 0; break; }
         const right = this.id === 'b6', amt = right ? this.turnR : this.turnL, wrong = right ? this.turnL : this.turnR;
-        if (this.step === 1) { prog(1, amt / TWO_PI); if (wrong > 1.5) return `fail:Turned the wrong way — circle to the ${right ? 'right' : 'left'}`; if (amt >= TWO_PI * 0.95) { done(1); this.step = 2; } }
-        else if (this.step === 2) { prog(2, 1 - Math.hypot(f, r) / 15); if (near(5)) { done(2); this.step = 3; } }
+        if (this.step === 1) {
+          this.span = Math.max(this.span, Math.hypot(f, r));
+          prog(1, Math.min(amt / TWO_PI, this.span / 14));
+          if (wrong > 1.5) return `fail:Turned the wrong way — circle to the ${right ? 'right' : 'left'}`;
+          if (amt >= TWO_PI * 0.95 && this.span < 14) { this.objectives[1].text = 'Too tight — use less yaw for a wider circle'; this.turnR = 0; this.turnL = 0; this.span = 0; this.setOrigin(e); }
+          else if (amt >= TWO_PI * 0.95) { done(1); this.step = 2; }
+        }
+        else if (this.step === 2) { prog(2, 1 - Math.hypot(f, r) / 20); if (near(6)) { done(2); this.step = 3; } }
         else return finishLand();
         break;
       }
       case 'b8': {
         if (this.step === 0) { climbTo(3); this.turnR = 0; this.turnL = 0; break; }
-        if (this.step === 1) { prog(1, this.turnR / TWO_PI); if (this.turnR >= TWO_PI * 0.9) { done(1); this.step = 2; this.turnL = 0; } }
-        else if (this.step === 2) { prog(2, this.turnL / TWO_PI); if (this.turnL >= TWO_PI * 0.9) { done(2); this.step = 3; } }
-        else if (this.step === 3) { prog(3, 1 - Math.hypot(f, r) / 15); if (near(5)) { done(3); this.step = 4; } }
+        this.span = Math.max(this.span, Math.hypot(f, r));
+        if (this.step === 1) { prog(1, this.turnR / TWO_PI); if (this.turnR >= TWO_PI * 0.9) { if (this.span < 12) { this.objectives[1].text = 'Too tight — wider right circle'; this.turnR = 0; this.span = 0; } else { done(1); this.step = 2; this.turnL = 0; this.span = 0; } } }
+        else if (this.step === 2) { prog(2, this.turnL / TWO_PI); if (this.turnL >= TWO_PI * 0.9) { if (this.span < 12) { this.objectives[2].text = 'Too tight — wider left circle'; this.turnL = 0; this.span = 0; } else { done(2); this.step = 3; } } }
+        else if (this.step === 3) { prog(3, 1 - Math.hypot(f, r) / 20); if (near(6)) { done(3); this.step = 4; } }
         else return finishLand();
         break;
       }
@@ -151,8 +162,9 @@ export class BasicLesson {
         if (this.step === 0) { climbTo(3); this.turn = 0; break; }
         if (this.step === 1) {
           const gain = z - this.z0, t = Math.abs(this.turn) / TWO_PI;
-          prog(1, Math.min(t, gain / 3));
-          if (Math.abs(this.turn) >= TWO_PI && gain >= 3) { done(1); this.step = 2; }
+          this.span = Math.max(this.span, Math.hypot(f, r));
+          prog(1, Math.min(t, gain / 3, this.span / 12));
+          if (Math.abs(this.turn) >= TWO_PI && gain >= 3 && this.span >= 12) { done(1); this.step = 2; }
         } else return finishLand();
         break;
       }
@@ -195,19 +207,19 @@ export class BasicLesson {
         const t = this.demoT % 9;
         return { ...base, thr: hold(3), yaw: t < 2 ? 0.25 : 0, pitch: t >= 3 && t < 4 ? 0.2 : t >= 4 && t < 5 ? -0.2 : 0, roll: t >= 6 && t < 7 ? 0.2 : t >= 7 && t < 8 ? -0.2 : 0 };
       }
-      case 'b3': { const [x, y] = this.step === 1 ? this.world(6, 0) : [this.ox, this.oy]; return { ...base, thr: hold(3), ...goTo(x, y) }; }
-      case 'b4': { const tgt = this.step === 1 ? this.world(0, 6) : this.step === 3 ? this.world(0, -6) : [this.ox, this.oy]; return { ...base, thr: hold(3), ...goTo(tgt[0], tgt[1]) }; }
+      case 'b3': { const [x, y] = this.step === 1 ? this.world(11, 0) : [this.ox, this.oy]; return { ...base, thr: hold(3), ...goTo(x, y) }; }
+      case 'b4': { const tgt = this.step === 1 ? this.world(0, 11) : this.step === 3 ? this.world(0, -11) : [this.ox, this.oy]; return { ...base, thr: hold(3), ...goTo(tgt[0], tgt[1]) }; }
       case 'b5': { const g = this.step <= 3 ? this.markers[this.step - 1] : { x: this.ox, y: this.oy }; return { ...base, thr: hold(3), ...goTo(g.x, g.y) }; }
       case 'b6': case 'b7': {
-        if (this.step === 1) return { ...base, thr: hold(3), pitch: 0.3, yaw: this.id === 'b6' ? 0.3 : -0.3 };
+        if (this.step === 1) return { ...base, thr: hold(3), pitch: 0.35, yaw: this.id === 'b6' ? 0.17 : -0.17 };
         return { ...base, thr: hold(3), ...goTo(this.ox, this.oy) };
       }
       case 'b8': {
-        if (this.step === 1) return { ...base, thr: hold(3), pitch: 0.3, yaw: 0.3 };
-        if (this.step === 2) return { ...base, thr: hold(3), pitch: 0.3, yaw: -0.3 };
+        if (this.step === 1) return { ...base, thr: hold(3), pitch: 0.35, yaw: 0.19 };
+        if (this.step === 2) return { ...base, thr: hold(3), pitch: 0.35, yaw: -0.19 };
         return { ...base, thr: hold(3), ...goTo(this.ox, this.oy) };
       }
-      case 'b9': return { ...base, thr: z < this.z0 + 3.5 ? 0.62 : hold(this.z0 + 3.5), pitch: 0.3, yaw: 0.28 };
+      case 'b9': return { ...base, thr: z < this.z0 + 3.5 ? 0.58 : hold(this.z0 + 3.5), pitch: 0.35, yaw: 0.18 };
       case 'b10': {
         if (this.step === 0) return { ...base, thr: hold(Math.max(4, z)), ...goTo(0, 0, 0.08, 0.5) };
         const d = Math.hypot(o('X'), o('Y'));

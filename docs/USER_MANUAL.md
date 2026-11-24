@@ -128,6 +128,13 @@ In the pause menu you can:
 - change the view and the live wind;
 - **inject failures** (instructor): GPS loss, RC link loss, motor failure, compass error.
 
+### Minimal HUD
+- **Default view:** a small status bar at the top, the **height block on the right** (height above ground and above crop, take-off, MSL, vertical speed, target, altitude tape), the stick monitor (bottom left) and the minimap.
+- **I** (or *Detailed telemetry* in Esc / Settings → Display): adds speed, wind and home distance, the tank / spray / power bar and the key help.
+- **H:** hides the whole HUD except warnings. Press H again to bring it back.
+- **During exercises:** the checklist is a small panel on the left. Mission panels and the tablet button are hidden. Targets are **orange cones with a ground circle** (lime = next, grey = done), not floating rings.
+- **Exercise sizes:** pitch/roll legs are 10 m, the square has 15 m sides, and circles must be at least 14 m across. A tight spin is refused with "Too tight — use less yaw".
+
 ### On-screen aids
 - **Flight trail:** a 3D line of the path flown. The **blue** end is the oldest and the **yellow** end is the newest. A faint copy on the ground helps you judge height. The same trail is drawn on the map. Turn it off in Settings → Display.
 - **Map** (bottom right, `M` for big):

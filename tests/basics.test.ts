@@ -39,3 +39,23 @@ describe('beginner course: every demo passes its own exercise', () => {
     }, 120000);
   }
 });
+
+describe('beginner course: circles must be wide', () => {
+  it('a tight spin (lots of yaw, little pitch) does not count as a circle', async () => {
+    const h = await makeSim('marut_ag365h');
+    h.inp.armSwEnabled = false; h.inp.mode = 2;
+    const { e, raw, tickArm } = adapter(h);
+    const L = new LessonRunner(); L.start(lessonById('b6'), e, false);
+    const dt = 0.05;
+    for (let i = 0; i < 90 / dt && !L.result; i++) {
+      // demo climbs, then a student spins tightly
+      const s = L.objectives[0].done ? { roll: 0, pitch: 0.12, yaw: 0.6, thr: 0.5 } : L.basic!.demo(e, dt);
+      Object.assign(raw.sticks, s);
+      h.inp.roll = s.roll ?? 0; h.inp.pitch = s.pitch ?? 0; h.inp.yaw = s.yaw ?? 0; h.inp.thr = s.thr ?? 0.5;
+      tickArm(); h.run(dt); L.update(e, dt);
+    }
+    expect(L.objectives[0].done).toBe(true);
+    expect(L.objectives[1].done).toBe(false);
+    expect(L.objectives[1].text).toMatch(/Too tight/);
+  }, 120000);
+});

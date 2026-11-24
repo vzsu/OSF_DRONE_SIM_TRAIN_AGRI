@@ -133,6 +133,7 @@ export class World3D {
   private hq = settings.display.quality === 'high';
   private lessonGroup = new THREE.Group();
   private lessonMeshes: THREE.Object3D[] = [];
+  private markerKey = '';
   private contact = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: aoTexture(), transparent: true, depthWrite: false, color: 0x000000 }));
   // training ground (rebuilt when the place changes)
   private site = new THREE.Group();
@@ -298,27 +299,45 @@ export class World3D {
   }
 
   /** Lesson gates / boxes / landing targets / orbit subject (rebuilt when the list changes). */
-  setMarkers(list: { x: number; y: number; z: number; r: number; kind: string; state: string }[], dronePos?: THREE.Vector3) {
-    if (this.lessonMeshes.length !== list.length) {
+  /** Lesson markers as real field-training aids — NOT floating game rings:
+   *  orange cones + a flat ground circle (lime = next, grey = done, white = later), a marker pole with a
+   *  small disc when a target height matters, a ground square for hover boxes, a pole for orbit subjects. */
+  setMarkers(list: { x: number; y: number; z: number; r: number; kind: string; state: string }[], _dronePos?: THREE.Vector3) {
+    const key = list.map((m) => `${m.kind}:${m.r}:${m.z.toFixed(1)}`).join('|');
+    if (this.markerKey !== key) {
+      this.markerKey = key;
       this.lessonGroup.clear(); this.lessonMeshes = [];
+      const coneM = new THREE.MeshStandardMaterial({ color: 0xff6a00, roughness: 0.6 });
+      const bandM = new THREE.MeshStandardMaterial({ color: 0xf5f5f0, roughness: 0.5 });
       for (const m of list) {
-        const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, depthWrite: false, fog: false });
-        let o: THREE.Object3D;
-        if (m.kind === 'gate') o = new THREE.Mesh(new THREE.TorusGeometry(m.r, 0.07, 8, 48), mat);
-        else if (m.kind === 'pad') { o = new THREE.Mesh(new THREE.RingGeometry(m.r * 0.85, m.r, 48), mat); o.rotation.x = -Math.PI / 2; }
-        else if (m.kind === 'poi') { o = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 12, 8), mat); }
-        else o = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(m.r * 2, 1, m.r * 2)), new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, fog: false }));
-        o.renderOrder = 7; this.lessonGroup.add(o); this.lessonMeshes.push(o);
+        const g = new THREE.Group();
+        const flat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8, depthWrite: false, side: THREE.DoubleSide });
+        if (m.kind === 'gate' || m.kind === 'pad') {
+          const ring = new THREE.Mesh(new THREE.RingGeometry(Math.max(m.r - 0.12, 0.1), m.r, 64), flat);
+          ring.rotation.x = -Math.PI / 2; ring.position.y = 0.06; ring.renderOrder = 6; g.add(ring);
+        }
+        if (m.kind === 'gate') {
+          const cone = new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.72, 20), coneM); cone.position.y = 0.36; cone.castShadow = true; g.add(cone);
+          const band = new THREE.Mesh(new THREE.CylinderGeometry(0.135, 0.165, 0.1, 20), bandM); band.position.y = 0.42; g.add(band);
+          if (m.z > 0.5) {
+            const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, m.z, 8), bandM); pole.position.y = m.z / 2; g.add(pole);
+            const disc = new THREE.Mesh(new THREE.CircleGeometry(0.35, 24), flat); disc.rotation.x = -Math.PI / 2; disc.position.y = m.z; g.add(disc);
+          }
+        } else if (m.kind === 'box') {
+          const r = m.r, pts = [[-r, -r], [r, -r], [r, r], [-r, r], [-r, -r]].map(([a2, b2]) => new THREE.Vector3(a2, 0.07, b2));
+          g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 })));
+          for (const [a2, b2] of [[-r, -r], [r, -r], [r, r], [-r, r]]) { const c = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.5, 16), coneM); c.position.set(a2, 0.25, b2); g.add(c); }
+        } else if (m.kind === 'poi') {
+          const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 6, 10), coneM); pole.position.y = 3; g.add(pole);
+        }
+        g.renderOrder = 6; this.lessonGroup.add(g); this.lessonMeshes.push(g);
       }
     }
-    const t = performance.now() / 1000;
     list.forEach((m, i) => {
-      const o = this.lessonMeshes[i];
-      o.position.copy(v3(m.x, m.y, m.kind === 'pad' ? 0.07 : m.kind === 'poi' ? 6 : m.z));
-      const col = m.state === 'next' ? 0x3bceac : m.state === 'done' ? 0xffd23f : 0xffffff;
-      const mat = (o as THREE.Mesh).material as THREE.MeshBasicMaterial;
-      mat.color.setHex(col); mat.opacity = m.state === 'idle' ? 0.35 : 0.6 + 0.35 * Math.sin(t * 4);
-      if (m.kind === 'gate' && dronePos) o.lookAt(dronePos.x, o.position.y, dronePos.z); // gates face the drone
+      const g = this.lessonMeshes[i]; if (!g) return;
+      g.position.copy(v3(m.x, m.y, 0));
+      const col = m.state === 'next' ? 0xd8ff3d : m.state === 'done' ? 0x9aa39d : 0xffffff;
+      g.traverse((o) => { const mat = (o as THREE.Mesh).material as THREE.MeshBasicMaterial | undefined; if (mat && mat.type === 'MeshBasicMaterial') { mat.color.setHex(col); mat.opacity = m.state === 'idle' ? 0.4 : 0.85; } if (mat && mat.type === 'LineBasicMaterial') (mat as unknown as THREE.LineBasicMaterial).color.setHex(col); });
     });
   }
 

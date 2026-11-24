@@ -312,6 +312,7 @@ function openPause() {
         <div class="field" style="margin-top:8px"><label>Tank fill at start <span class="val" id="pv-tf">${Math.round(settings.env.tankFill * 100)}%</span></label><input type="range" id="p-tf" min="0" max="1" step="0.05" value="${settings.env.tankFill}"></div>
         <button class="small" id="p-apply">Apply &amp; restart</button></div>
       <div><h3>View</h3><select id="p-view">${VIEWS.map((v) => `<option value="${v}" ${settings.camera.view === v ? 'selected' : ''}>${v === 'cam' ? 'CAMERA (gimbal)' : v.toUpperCase()}</option>`).join('')}</select>
+        <label class="small"><input type="checkbox" id="p-hd" ${settings.display.hudDetail ? 'checked' : ''}> Detailed telemetry (speed, wind, tank, power, keys) — I</label><br>
         <label class="small"><input type="checkbox" id="p-ha" ${engine.env.holdAssist !== false ? 'checked' : ''}> Hold assist (ALT HOLD / ATTI hold position) — next restart</label>
         <h3 style="margin-top:12px">Wind (live)</h3>
         <div class="field"><label>Speed <span class="val" id="pv-ws">${e.windSpd}</span> m/s</label><input type="range" id="p-ws" min="0" max="14" step="0.5" value="${e.windSpd}"></div>
@@ -333,6 +334,7 @@ function openPause() {
   q('p-end').onclick = () => endFlight();
   q('p-home').onclick = () => { flying = false; nav('home'); };
   q('p-set').onclick = () => nav('settings');
+  q<HTMLInputElement>('p-hd').onchange = (ev) => { settings.display.hudDetail = (ev.target as HTMLInputElement).checked; saveSettings(); };
   q<HTMLInputElement>('p-ha').onchange = (ev) => { settings.env.holdAssist = (ev.target as HTMLInputElement).checked; saveSettings(); };
   q('p-mis').onclick = () => nav('mission');
   q('p-svc').onclick = () => { closePause(); gcs.open('battery'); };
@@ -365,6 +367,8 @@ onKey((a) => {
   if (a === 'gimbalUp') world.gimbalPitch = Math.min(20, world.gimbalPitch + 5);
   if (a === 'gimbalDown') world.gimbalPitch = Math.max(-90, world.gimbalPitch - 5);
   if (a === 'record') hud.toggleRec();
+  if (a === 'hud') { hud.toggleHidden(); toast(hud.hidden ? 'HUD hidden — press H to show' : 'HUD shown'); }
+  if (a === 'hudDetail') { settings.display.hudDetail = !settings.display.hudDetail; saveSettings(); toast(settings.display.hudDetail ? 'Detailed telemetry on' : 'Detailed telemetry off (I)'); }
 });
 document.addEventListener('visibilitychange', () => { if (document.hidden && flying) openPause(); });
 
@@ -402,8 +406,9 @@ function frame(now: number) {
     linkHost.tick(now);
     lessons.update(engine, engine.paused ? 0 : dt);
     lessonCard.update(lessons);
+    hud.inLesson = !!lessons.def;
     world.setMarkers(lessons.def ? lessons.markers : [], world.drone?.group.position);
-    gcsBtn.style.display = gcs.isOpen() ? 'none' : 'block';
+    gcsBtn.style.display = gcs.isOpen() || lessons.def || hud.hidden ? 'none' : 'block';
     if (engine.o('CRASHED') > 0.5) { crashTimer += dt; if (crashTimer > 3) endFlight(); }
     // slow PC warning: sustained low frame rate makes the controls feel laggy
     if (!slowWarned && engine.frameMs > 45 && engine.o('T') > 8 && !document.hidden) {

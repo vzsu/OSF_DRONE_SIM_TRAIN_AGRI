@@ -29,7 +29,7 @@ export interface Settings {
   activeDevice: string; // '' = auto (first connected) | 'keyboard'
   camera: { view: View; fov: number; pilotX: number; pilotY: number; eye: number; fpvTilt: number; vlosZoom: boolean };
   latency: { linkMs: number };
-  display: { units: 'metric' | 'imperial'; orientArrow: boolean; groundMarker: boolean; showSticks: boolean; quality: 'low' | 'high'; trail: boolean };
+  display: { units: 'metric' | 'imperial'; orientArrow: boolean; groundMarker: boolean; showSticks: boolean; quality: 'low' | 'high'; trail: boolean; hudDetail?: boolean };
   /** training ground: a named place id, or 'custom' with category + seed */
   place: { id: string; category: 'agri' | 'wedding'; seed: number };
   trainee: string;

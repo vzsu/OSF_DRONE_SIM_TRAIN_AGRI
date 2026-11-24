@@ -1,14 +1,14 @@
 import type { Metadata, Viewport } from 'next';
-import { Bricolage_Grotesque, Instrument_Sans, JetBrains_Mono } from 'next/font/google';
+import { Space_Grotesk, Instrument_Sans, JetBrains_Mono } from 'next/font/google';
 import 'leaflet/dist/leaflet.css';
 import 'katex/dist/katex.min.css';
 import './globals.css';
 
 // Google font pairing, self-hosted by next/font at build time (works offline on the LAN):
-// Bricolage Grotesque — characterful display face for headings and big numbers
+// Space Grotesk — headings (same pairing as OSF Drone Learning OS)
 // Instrument Sans — clean, compact UI text
 // JetBrains Mono — telemetry, coordinates, tabular readouts
-const display = Bricolage_Grotesque({ subsets: ['latin'], variable: '--font-display', display: 'swap', weight: ['500', '700', '800'] });
+const display = Space_Grotesk({ subsets: ['latin'], variable: '--font-display', display: 'swap', weight: ['500', '600', '700'] });
 const sans = Instrument_Sans({ subsets: ['latin'], variable: '--font-sans', display: 'swap', weight: ['400', '500', '600', '700'] });
 const mono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono', display: 'swap', weight: ['400', '600'] });
 

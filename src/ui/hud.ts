@@ -93,6 +93,11 @@ export class Hud {
   }
 
   missionChanged() { this.lanes = settings.mission.poly.length >= 3 ? planLanes(settings.mission) : []; }
+  /** H: hide everything except warnings (clean view for watching / filming). */
+  hidden = false;
+  toggleHidden() { this.hidden = !this.hidden; this.root.classList.toggle('off', this.hidden); }
+  /** set by main while a lesson / exercise runs: keep the screen free of mission/game clutter */
+  inLesson = false;
   toggleBigMap() {
     this.big = !this.big;
     $('h-minibox').classList.toggle('large', this.big);
@@ -103,6 +108,8 @@ export class Hud {
   resetTrail() { this.trail = []; this.lastTrail = { x: 1e9, y: 1e9 }; this.rec = false; }
 
   update(e: Engine, now: number) {
+    this.root.classList.toggle('detail', !!settings.display.hudDetail);
+    this.root.classList.toggle('lesson', this.inLesson);
     const o = (k: Parameters<Engine['o']>[0]) => e.o(k);
     if (o('ARMED') > 0.5) {
       const x = o('X'), y = o('Y');
