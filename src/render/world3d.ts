@@ -11,6 +11,8 @@ import { settings, type View } from '../settings';
 import { cropById, grassById } from '../data/crops';
 import { Gimbal } from './gimbal';
 import { Trails, type TrailStyle } from './trails';
+import { OrbitCam } from './orbitCam';
+import { isHeld } from '../input/input';
 
 const v3 = (x: number, y: number, z: number) => new THREE.Vector3(x, z, -y);
 const texLoader = new THREE.TextureLoader();
@@ -158,6 +160,11 @@ export class World3D {
   gimbal = new Gimbal();
   /** flight trails (wingtip / path / both) */
   trails = new Trails();
+  private lastDronePos = new THREE.Vector3();
+  /** drone position last frame (three.js coords) */
+  dronePos() { return this.lastDronePos.clone(); }
+  /** orbit / free-look camera for watching AUTO missions */
+  orbit = new OrbitCam();
   get gimbalPitch() { return this.gimbal.tilt; }
   set gimbalPitch(v: number) { this.gimbal.setTilt(v); }
   /** camera position under the nose (world) — updated every frame */
@@ -174,6 +181,7 @@ export class World3D {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, this.hq && !lowMemoryPC() ? 1.5 : 1));
     // integrated GPUs share system RAM: if the GPU runs out, Chrome kills the context.
     // Show what happened and reload when it comes back, instead of a frozen black screen.
+    this.orbit.bind(canvas);
     canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); showGpuLost(); });
     canvas.addEventListener('webglcontextrestored', () => location.reload());
     this.renderer.toneMapping = THREE.AgXToneMapping;
@@ -754,6 +762,7 @@ export class World3D {
       cu.uTime.value = performance.now() / 1000;
       cu.uWind.value = Math.min(3, e.env.windSpd / 3 + e.env.turb);
     }
+    this.lastDronePos.copy(pos);
     this.updateCamera(settings.camera.view, pos, q, dtReal);
     {
       const tNow = performance.now() / 1000;
@@ -763,8 +772,8 @@ export class World3D {
     }
     this.pilot.visible = true;
     if (this.auxCtx && performance.now() - this.auxAt > 66) { this.auxAt = performance.now(); this.renderAux(pos, q, dtReal); }
-    this.pilot.visible = settings.camera.view !== 'vlos';
-    this.drone.group.visible = settings.camera.view !== 'fpv' && settings.camera.view !== 'cam';
+    this.pilot.visible = this.orbit.on || settings.camera.view !== 'vlos';
+    this.drone.group.visible = this.orbit.on || (settings.camera.view !== 'fpv' && settings.camera.view !== 'cam');
     this.renderer.render(this.scene, this.camera);
   }
 
@@ -805,6 +814,11 @@ export class World3D {
     const a = 1 - Math.exp(-dt * 8);
     let fov = cs.fov;
     c.up.set(0, 1, 0);
+    if (this.orbit.on) {
+      this.orbit.update(c, pos, dt, isHeld);
+      if (Math.abs(c.fov - cs.fov) > 0.01) { c.fov = cs.fov; c.updateProjectionMatrix(); }
+      return;
+    }
     if (view === 'vlos') {
       const eye = v3(cs.pilotX, cs.pilotY, cs.eye);
       c.position.copy(eye);

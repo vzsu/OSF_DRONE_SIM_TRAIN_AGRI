@@ -207,6 +207,8 @@ canvas.planner { width: 100%; max-width: 640px; aspect-ratio: 150 / 175; backgro
 .mono { font-family: var(--mono, monospace); }
 .nb-pair .qr svg { width: 220px; height: 220px; background: #fff; display: block; }
 .shutter-flash { position: fixed; inset: 0; background: #fff; opacity: .7; z-index: 80; pointer-events: none; animation: flash .25s ease-out forwards; } @keyframes flash { to { opacity: 0; } }
+.orbit-hint { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 30; pointer-events: none; padding: 7px 14px; border-radius: 8px; background: rgba(12,14,16,0.72); color: #e8ecef; font: 12px/1.4 var(--font-mono, monospace); letter-spacing: 0.02em; white-space: nowrap; max-width: calc(100vw - 32px); overflow: hidden; text-overflow: ellipsis; }
+.orbit-hint b { color: #d8ff3d; margin-right: 8px; }
 #hud .altbox { display: flex; gap: 10px; align-items: stretch; }
 #hud .altbox canvas { flex: none; }
 #hud .altbox .altnums { min-width: 170px; }

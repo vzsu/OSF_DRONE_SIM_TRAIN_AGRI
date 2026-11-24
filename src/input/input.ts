@@ -63,14 +63,21 @@ window.addEventListener('keydown', (e) => {
     acts.forEach((a) => kbHandlers.forEach((f) => f(a)));
   }
   keys.add(e.code);
+  if (e.code === 'Tab' && kbFlightLock) e.preventDefault();
   if (acts.length && (e.code.startsWith('Arrow') || e.code === 'Space' || e.code === 'Backspace' || e.code.startsWith('Page'))) e.preventDefault();
 });
 window.addEventListener('keyup', (e) => keys.delete(e.code));
 window.addEventListener('blur', () => keys.clear());
 
+/** Is this key code held right now (orbit camera uses raw W/A/S/D/Q/E). */
+export function isHeld(code: string) { return keys.has(code); }
+/** While true (orbit camera), keyboard flight keys don't move the sticks. */
+let kbFlightLock = false;
+export function setKbFlightLock(v: boolean) { kbFlightLock = v; }
+
 let kbThr = 0;
 function keyboardSticks(armed: boolean): Sticks {
-  const k = (action: string) => (keys.has(keyOf(action)) ? 1 : 0);
+  const k = (action: string) => (!kbFlightLock && keys.has(keyOf(action)) ? 1 : 0);
   // Mode 2 layout: W/S throttle, A/D yaw, arrows pitch/roll
   const up = k('thrUp'), dn = k('thrDown');
   const centre = armed ? 0.5 : 0;

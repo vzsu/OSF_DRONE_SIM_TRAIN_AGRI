@@ -6,6 +6,7 @@ import { missionScreen } from './ui/mission';
 import { realMapScreen } from './ui/realmap';
 import { popIn, popOut, toastIn, toastOut, bindPressFeedback } from './ui/motion';
 import { TRAIL_STYLES, TRAIL_LABEL, type TrailStyle } from './render/trails';
+import { setKbFlightLock } from './input/input';
 import { LessonRunner, lessonById, ALL_LESSONS as LESSONS } from './lessons/lessons';
 import { lessonsScreen, LessonCard, showLessonResult, startLesson } from './ui/lessonUI';
 import type { WorldDef } from './data/world';
@@ -256,6 +257,7 @@ function reloadMission() {
 }
 
 async function startFlight() {
+  setOrbit(false);
   await applyPlace();
   const lesson = lessonById(settings.lesson);
   const env = { ...settings.env };
@@ -291,6 +293,7 @@ async function startFlight() {
 }
 
 async function endFlight() {
+  setOrbit(false);
   if (!flying) return;
   flying = false;
   closePause();
@@ -387,8 +390,29 @@ function openPause() {
   q<HTMLInputElement>('p-ce').oninput = (ev) => { f.compassErrDeg = +(ev.target as HTMLInputElement).value; q('pv-ce').textContent = String(f.compassErrDeg); };
 }
 
+/** Orbit view is only for watching a planned mission while it is being flown. */
+const missionWorking = () => engine.o('ARMED') > 0.5 && engine.mission.legs.length > 0 && [3, 4, 5].includes(engine.o('MODE'));
+let orbitHint: HTMLDivElement | null = null;
+function setOrbit(on: boolean, why = '') {
+  if (on === world.orbit.on) return;
+  if (on) {
+    world.orbit.start(world.dronePos(), world.camera.position);
+    orbitHint = document.createElement('div'); orbitHint.className = 'orbit-hint';
+    orbitHint.innerHTML = '<b>ORBIT VIEW</b> W A S D move · Q / E rotate · drag look · wheel or Z / X zoom · Shift fast · Tab follow drone · O exit';
+    document.body.appendChild(orbitHint);
+  } else {
+    world.orbit.on = false; orbitHint?.remove(); orbitHint = null;
+    if (why) toast(why);
+  }
+  setKbFlightLock(on);
+}
 onKey((a) => {
   if (!flying) return;
+  if (a === 'orbit' && !pauseEl) {
+    if (world.orbit.on) setOrbit(false);
+    else if (engine.o('ARMED') > 0.5 && engine.mission.legs.length > 0 && engine.o('MODE') === 5) setOrbit(true);
+    else toast('Orbit view works only while a planned mission is flying in AUTO', true);
+  }
   if (uiEl.querySelector('.screen')) { if (a === 'pause') nav('resume'); return; } // settings/mission open mid-flight
   if (a === 'pause') { if (gcs.isOpen()) gcs.close(); else if (pauseEl) closePause(); else openPause(); }
   if (a === 'view' && !pauseEl) cycleView();
@@ -427,6 +451,7 @@ function frameInner(now: number) {
   lastT = now;
   if (flying) {
     engine.frame(now);
+    if (world.orbit.on && !missionWorking()) setOrbit(false, 'Orbit view closed — the mission is not running');
     // RC view switch: change view on switch movement
     const vp = engine.sticks.viewPos;
     if (lastViewPos >= 0 && vp !== lastViewPos) cycleView();

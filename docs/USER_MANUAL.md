@@ -140,6 +140,22 @@ In the pause menu you can:
 - **During exercises:** the checklist is a small panel on the left. Mission panels and the tablet button are hidden. Targets are **orange cones with a ground circle** (lime = next, grey = done), not floating rings.
 - **Exercise sizes:** pitch/roll legs are 10 m, the square has 15 m sides, and circles must be at least 14 m across. A tight spin is refused with "Too tight — use less yaw".
 
+### Orbit view (key **O**, only during an AUTO mission)
+Watch the spraying from any angle while a planned mission is flying in AUTO. Outside a mission, O shows a message and does nothing.
+
+| Input | Action |
+|---|---|
+| (hands off) | camera slowly circles the drone |
+| W / A / S / D | move the camera over the field like a game (stops following the drone) |
+| Shift | move 3× faster |
+| Q / E | rotate around |
+| mouse drag | rotate and tilt |
+| mouse wheel, Z / X | zoom in / out |
+| Tab | follow the drone again |
+| O | leave orbit view |
+
+While orbit view is on, the keyboard flight keys don't move the drone; the RC still works, so you can take over with the mode switch. Orbit view closes by itself when the mission stops (manual mode, landed or disarmed).
+
 ### Flight trails (Esc menu → *Flight trail*, Settings → Display, or key **Y** to cycle)
 | Style | What you see |
 |---|---|
