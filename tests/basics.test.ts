@@ -59,3 +59,29 @@ describe('beginner course: circles must be wide', () => {
     expect(L.objectives[1].text).toMatch(/Too tight/);
   }, 120000);
 });
+
+import { setWorld, generateWorld, TRAINING_CONES } from '../src/data/world';
+describe('beginner course on the training airfield (anchored to the pad)', () => {
+  for (const id of ['b3', 'b4', 'b5']) {
+    it(`${id} demo passes and its cones sit on the painted cone layout`, async () => {
+      setWorld(generateWorld('training', 0));
+      const h = await makeSim('marut_ag365h');
+      h.inp.armSwEnabled = false; h.inp.mode = 2;
+      const { e, raw, tickArm } = adapter(h);
+      const L = new LessonRunner(); L.start(lessonById(id), e, false); L.demo = true;
+      let checked = false;
+      for (let i = 0; i < 300 / 0.05 && !L.result; i++) {
+        const s = L.basic!.demo(e, 0.05); Object.assign(raw.sticks, s);
+        h.inp.roll = s.roll ?? 0; h.inp.pitch = s.pitch ?? 0; h.inp.yaw = s.yaw ?? 0; h.inp.thr = s.thr ?? 0.5;
+        tickArm(); h.run(0.05); L.update(e, 0.05);
+        if (!checked && L.objectives[0].done) {
+          checked = true;
+          for (const m of L.markers.filter((k) => k.kind === 'gate')) expect(TRAINING_CONES.some(([x, y]) => Math.hypot(x - m.x, y - m.y) < 0.01)).toBe(true);
+        }
+      }
+      setWorld(generateWorld('agri', 0));
+      expect(checked).toBe(true);
+      expect(L.result?.passed).toBe(true);
+    }, 120000);
+  }
+});

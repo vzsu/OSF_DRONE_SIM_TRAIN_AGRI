@@ -31,7 +31,7 @@ export interface Settings {
   latency: { linkMs: number };
   display: { units: 'metric' | 'imperial'; orientArrow: boolean; groundMarker: boolean; showSticks: boolean; quality: 'low' | 'high'; trail: boolean; hudDetail?: boolean };
   /** training ground: a named place id, or 'custom' with category + seed */
-  place: { id: string; category: 'agri' | 'wedding'; seed: number };
+  place: { id: string; category: 'agri' | 'wedding' | 'training'; seed: number };
   trainee: string;
   lesson?: string | null; checkride?: boolean;
   lessonBest?: Record<string, { passed: boolean; time: number; checkride: boolean; at: string }>;

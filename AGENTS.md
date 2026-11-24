@@ -82,6 +82,8 @@ On Windows the user starts everything with `start-sim.cmd` (wraps `start-sim.ps1
 19. **Guest mode** (`isGuest()`, sessionStorage per tab): never call `saveLog` / persist progress for guests. Entering guest mode logs out any old session and clears progress.
 20. New screens: add the route to `STATIC` / `parse` / `pathFor` / `crumbsFor` in `router.ts` and a branch in `main.ts` `nav()`. Never route on unvalidated params.
 21. Navigating code: use CodeGraph first (see `.claude/skills/codegraph/SKILL.md`).
+22. Lessons set `engine.lockAutoModes` (RTL / LAND / AUTO requests become LOITER, tablet auto commands refused); the runner fails a run if mode 3/4/5 is ever active. Lessons fly on `generateWorld('training')` (see `lessonPlace()` in main).
+23. The main loop wraps each frame in try/catch: a HUD bug must not freeze the simulation. Never index `POLES[0]` etc. — some grounds have none.
 12. Keep `MODES` order = WASM mode numbers (0 STAB, 1 ALTHOLD, 2 LOITER, 3 RTL, 4 LAND, 5 AUTO). Event codes ≥ 100 are mode changes.
 
 ## Adding things

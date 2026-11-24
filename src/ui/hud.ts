@@ -1,7 +1,7 @@
 // Flight HUD: telemetry like a real agri GCS / RC screen, minimap with spray coverage, stick monitor, warnings.
 import type { Engine } from '../sim/engine';
 import { settings } from '../settings';
-import { FIELD, TREES, POLES, HOUSE, HOME, BOXES, CROWD, WORLD, fenceBreach } from '../data/world';
+import { FIELD, TREES, POLES, WIRES, HOUSE, HOME, BOXES, CROWD, WORLD, fenceBreach } from '../data/world';
 import { GRID } from '../sim/coverage';
 import { planLanes } from '../sim/mission';
 import { pulse } from './motion';
@@ -254,7 +254,7 @@ export class Hud {
     const sc = Math.min(W / (x1 - x0), H / (y1 - y0));
     const X = (x: number) => (x - x0) * sc, Y = (y: number) => H - (y - y0) * sc;
     g.fillStyle = '#26301f'; g.fillRect(0, 0, W, H);
-    g.fillStyle = WORLD.category === 'wedding' ? '#5f9a45' : '#4c6a28'; g.fillRect(X(FIELD.x0), Y(FIELD.y1), (FIELD.x1 - FIELD.x0) * sc, (FIELD.y1 - FIELD.y0) * sc);
+    g.fillStyle = WORLD.category === 'wedding' ? '#5f9a45' : WORLD.category === 'training' ? '#86a95e' : '#4c6a28'; g.fillRect(X(FIELD.x0), Y(FIELD.y1), (FIELD.x1 - FIELD.x0) * sc, (FIELD.y1 - FIELD.y0) * sc);
     // mission area + planned lanes
     const poly = settings.mission.poly;
     if (poly.length >= 3) {
@@ -275,7 +275,8 @@ export class Hud {
     g.drawImage(this.covCanvas, X(GRID.x0), Y(GRID.y0 + GRID.h), GRID.w * sc, GRID.h * sc);
     g.fillStyle = '#2f5a25'; for (const t of TREES) { g.beginPath(); g.arc(X(t.x), Y(t.y), t.crownR * sc, 0, 7); g.fill(); }
     g.strokeStyle = '#e8d24a'; g.lineWidth = 1; g.setLineDash([3, 3]);
-    g.beginPath(); g.moveTo(X(POLES[0].x), Y(POLES[0].y)); g.lineTo(X(POLES[POLES.length - 1].x), Y(POLES[POLES.length - 1].y)); g.stroke(); g.setLineDash([]);
+    // wires (power lines / string lights) — grounds without any (training airfield) draw none
+    g.beginPath(); for (const w of WIRES) { const a = w.pts[0], b = w.pts[w.pts.length - 1]; g.moveTo(X(a[0]), Y(a[1])); g.lineTo(X(b[0]), Y(b[1])); } g.stroke(); g.setLineDash([]); void POLES;
     g.fillStyle = '#b89a70'; g.fillRect(X(HOUSE.x - HOUSE.hx), Y(HOUSE.y + HOUSE.hy), HOUSE.hx * 2 * sc, HOUSE.hy * 2 * sc);
     g.fillStyle = '#fff'; g.font = `${this.big ? 14 : 10}px monospace`; g.fillText('H', X(HOME.x) - 3, Y(HOME.y) + 4);
     g.fillStyle = '#4ea3ff'; g.beginPath(); g.arc(X(settings.camera.pilotX), Y(settings.camera.pilotY), 3, 0, 7); g.fill();

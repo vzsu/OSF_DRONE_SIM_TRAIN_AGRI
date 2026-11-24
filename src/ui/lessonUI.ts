@@ -19,8 +19,7 @@ export function startLesson(def: LessonDef, nav: Nav) {
   const d = droneById(settings.droneId);
   if (def.kind === 'agri' && d.tankCap === 0) settings.droneId = 'marut_ag365h';
   if (def.kind === 'camera' && d.fc !== 'dji') settings.droneId = 'dji_mavic3pro';
-  if (def.kind === 'camera') settings.place = { id: 'wed-11', category: 'wedding', seed: 11 };
-  else if (settings.place.category === 'wedding') settings.place = { id: 'agri-classic', category: 'agri', seed: 0 };
+  // the ground is chosen per lesson at start-up (training airfield / farm / wedding venue)
   saveSettings();
   nav('fly');
 }

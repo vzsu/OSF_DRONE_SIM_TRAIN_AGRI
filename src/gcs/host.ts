@@ -96,6 +96,7 @@ export class GcsHost {
   /** Execute a tablet command. Returns an error text ('' = ok). */
   command(c: GcsCmd): string {
     const e = this.e, armed = e.o('ARMED') > 0.5;
+    if (e.lockAutoModes && ['rth', 'start', 'resume', 'takeoff', 'land'].includes(c.t)) return 'Not available during a training lesson — fly it by hand';
     switch (c.t) {
       case 'plan': {
         if (e.mission.active && armed) return 'Pause or land before editing the area';

@@ -281,6 +281,10 @@ Go to **Settings → Keyboard shortcuts**, click an action and press the new key
 - **Demo first:** each exercise is first flown by the autopilot (*▶ Watch demo, then fly*). Watch the **stick monitor** (bottom left): it has centre axes, a 25% grid and live numbers (T/Y, P/R). The checklist fills as the demo flies. Then it says **"Your turn"** and you fly the same exercise. *Skip demo* jumps straight to your turn. *Fly now* skips the demo entirely.
 - Every finished step plays a short tick, fills its progress bar and ticks the checklist. Results are saved to the student's account.
 
+**Training airfield.** All lessons fly on one dedicated field, except the camera orbit (wedding venue) and the agri lessons (farm). It's flat mown grass with painted white lines, permanent orange cones and a hangar, with no crops, power lines or crowd. The lines are a 15 m square, the pitch/roll axes with 5 m ticks, a practice lane and two circle references. The cones sit at 10 m forward and 10 m left/right, at the square corners and at the lane ends. Beginner exercises start from the pad, so the graded cones match the painted cones exactly. You can also free-fly the airfield: Environment → *Training airfield*.
+
+**Lessons are flown by hand.** During a lesson the RTH switch, the R key, mode-switch positions set to RTL / LAND / AUTO, and the tablet's RTH / Start / Take-off / Land are disabled. The pilot sees "… is disabled during training lessons — fly it by hand". If an automatic return or landing still takes over (for example the battery failsafe), the run fails: lessons only count when flown manually.
+
 **Admin panel** shows each student's flights, scores, **theory quizzes (passed / average)** and **sim exercises passed**.
 
 **Real URLs and breadcrumbs.**

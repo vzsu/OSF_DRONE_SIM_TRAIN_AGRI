@@ -4,6 +4,7 @@
 import type { Engine } from '../sim/engine';
 import type { Sticks } from '../input/input';
 import type { LessonDef, ObjView, Marker } from './lessons';
+import { WORLD } from '../data/world';
 
 export const BASICS: LessonDef[] = [
   { id: 'b1', n: 1, title: 'Take-off and landing', level: 'Basic', kind: 'any', track: 'basic', timeLimit: 180, brief: 'Arm, climb gently to 2 m, hover 3 s, descend slowly and land, then disarm.' },
@@ -58,7 +59,13 @@ export class BasicLesson {
     }
   }
 
-  private setOrigin(e: Engine) { this.ox = e.o('X'); this.oy = e.o('Y'); this.oyaw = e.o('YAW'); this.z0 = e.o('Z'); this.origin = true; this.placeGates(); }
+  /** On the training airfield the exercise is anchored to the pad (nose north), so the graded cones sit
+   *  exactly on the painted layout; elsewhere it starts wherever the student reached the climb height. */
+  private setOrigin(e: Engine) {
+    const onField = WORLD.category === 'training' && Math.hypot(e.o('X'), e.o('Y')) < 4;
+    this.ox = onField ? 0 : e.o('X'); this.oy = onField ? 0 : e.o('Y'); this.oyaw = onField ? Math.PI / 2 : e.o('YAW');
+    this.z0 = e.o('Z'); this.origin = true; this.placeGates();
+  }
   /** position relative to the origin in the start-heading frame: [forward, right] */
   private rel(e: Engine): [number, number] {
     const dx = e.o('X') - this.ox, dy = e.o('Y') - this.oy, c = Math.cos(this.oyaw), s = Math.sin(this.oyaw);

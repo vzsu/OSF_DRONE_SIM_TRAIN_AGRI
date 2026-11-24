@@ -131,7 +131,21 @@ function cycleView() { const vs = viewsFor(); settings.camera.view = vs[(vs.inde
 
 /** Build the selected training ground (agri farm / wedding venue) for physics, renderer, map. */
 const mapCache = new Map<string, WorldDef>();
+/** which ground a lesson uses: beginner + general lessons → training airfield */
+function lessonPlace(): { category: 'agri' | 'wedding' | 'training'; seed: number; name: string } | null {
+  const l = lessonById(settings.lesson);
+  if (!l) return null;
+  if (l.kind === 'camera') return { category: 'wedding', seed: 11, name: 'Lawn wedding — mandap' };
+  if (l.kind === 'agri') return { category: 'agri', seed: 0, name: 'Home farm (1 ha)' };
+  return { category: 'training', seed: 0, name: 'Training airfield' };
+}
 async function applyPlace(): Promise<void> {
+  const lp = lessonPlace();
+  if (lp) {
+    if (WORLD.category !== lp.category || WORLD.seed !== lp.seed || WORLD.mapId) { setWorld(generateWorld(lp.category, lp.seed, lp.name)); }
+    world.rebuildSite();
+    return;
+  }
   if (settings.place.id.startsWith('map:')) {
     // saved real map (Chhattisgarh): load its ground definition from the server
     const id = settings.place.id.slice(4);
@@ -252,6 +266,7 @@ async function startFlight() {
   } else restoreAids();
   engine.start(settings.droneId, env);
   lessons.start(lesson, engine, !!settings.checkride);
+  engine.lockAutoModes = !!lesson;
   if (lesson?.track === 'basic' && demoNext) {
     demoNext = false; lessons.demo = true; engine.gcsMode = 2;
     let lastT = 0;
@@ -292,6 +307,7 @@ engine.mission.onMessage = (text, bad) => {
   toast(text, bad); sound.beep(bad ? 700 : 1500, bad ? 2 : 1, 0.07);
   if (/breakpoint saved/i.test(text)) speak('Breakpoint saved'); else if (/Resuming/.test(text)) speak('Resuming from breakpoint'); else if (/All lanes sprayed/.test(text)) speak('Spraying complete. Returning home'); else if (/Mission start/.test(text)) speak('Mission started');
 };
+engine.onBlocked = (what) => { toast(`${what} is disabled during training lessons — fly it by hand`, true); sound.beep(500, 2, 0.06); };
 engine.onResetRequest = () => { if (flying) { toast('Reset — back on the pad'); startFlight(); } };
 function serviceDrone() {
   if (!flying) return;
@@ -388,7 +404,17 @@ onKey((a) => {
 document.addEventListener('visibilitychange', () => { if (document.hidden && flying) openPause(); });
 
 // ---------- main loop ----------
+let frameErrors = 0;
+/** Main loop. One bad frame (e.g. a HUD bug on an unusual training ground) must never freeze the simulator. */
 function frame(now: number) {
+  try { frameInner(now); }
+  catch (e) {
+    console.error('[frame]', e);
+    if (frameErrors++ === 0) toast('A display error occurred — the simulation keeps running. Please report it.', true);
+  }
+  requestAnimationFrame(frame);
+}
+function frameInner(now: number) {
   const dt = lastT ? Math.min((now - lastT) / 1000, 0.1) : 0;
   lastT = now;
   if (flying) {
@@ -444,7 +470,6 @@ function frame(now: number) {
     world.camera.lookAt(0, 0, -50);
     world.renderer.render(world.scene, world.camera);
   }
-  requestAnimationFrame(frame);
 }
 
 async function boot() {

@@ -3,7 +3,7 @@
 import { mount, header, wireNav, backTarget } from './screens';
 import { settings, saveSettings } from '../settings';
 import { droneById } from '../data/drones';
-import { FIELD, TREES, POLES, HOUSE, HOME, WATER_TANK } from '../data/world';
+import { FIELD, TREES, POLES, WIRES, HOUSE, HOME, WATER_TANK } from '../data/world';
 import { planLanes, missionStats, defaultPlan, type Pt } from '../sim/mission';
 
 type Nav = (screen: string, arg?: unknown) => void;
@@ -65,10 +65,10 @@ export function missionScreen(nav: Nav) {
     for (let x = -70; x <= 70; x += 10) { g.beginPath(); g.moveTo(X(x), 0); g.lineTo(X(x), H); g.stroke(); }
     for (let y = -40; y <= 130; y += 10) { g.beginPath(); g.moveTo(0, Y(y)); g.lineTo(W, Y(y)); g.stroke(); }
     g.fillStyle = '#2f5a25'; for (const t of TREES) { g.beginPath(); g.arc(X(t.x), Y(t.y), t.crownR * sc, 0, 7); g.fill(); }
-    g.strokeStyle = '#e8d24a'; g.setLineDash([4, 4]); g.beginPath(); g.moveTo(X(POLES[0].x), Y(POLES[0].y)); g.lineTo(X(POLES[POLES.length - 1].x), Y(POLES[POLES.length - 1].y)); g.stroke(); g.setLineDash([]);
+    g.strokeStyle = '#e8d24a'; g.setLineDash([4, 4]); g.beginPath(); for (const w of WIRES) { const a = w.pts[0], b = w.pts[w.pts.length - 1]; g.moveTo(X(a[0]), Y(a[1])); g.lineTo(X(b[0]), Y(b[1])); } g.stroke(); g.setLineDash([]);
     g.fillStyle = '#b89a70'; g.fillRect(X(HOUSE.x - HOUSE.hx), Y(HOUSE.y + HOUSE.hy), HOUSE.hx * 2 * sc, HOUSE.hy * 2 * sc);
     g.fillStyle = '#8a8f96'; g.beginPath(); g.arc(X(WATER_TANK.x), Y(WATER_TANK.y), WATER_TANK.r * sc, 0, 7); g.fill();
-    g.font = `${11 * dpr}px monospace`; g.fillStyle = '#e8d24a'; g.fillText('power line', X(POLES[0].x) + 4, Y(60));
+    g.font = `${11 * dpr}px monospace`; g.fillStyle = '#e8d24a'; if (POLES.length) g.fillText('power line', X(POLES[0].x) + 4, Y(60));
     if (m.poly.length) {
       g.fillStyle = 'rgba(255,255,255,0.10)'; g.strokeStyle = '#fff'; g.lineWidth = 2 * dpr; g.beginPath();
       m.poly.forEach(([x, y], i) => (i ? g.lineTo(X(x), Y(y)) : g.moveTo(X(x), Y(y))));

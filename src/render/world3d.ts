@@ -2,7 +2,7 @@
 // cameras (VLOS / chase / FPV / top), spray particles, training aids.
 // Coordinates: physics ENU (x east, y north, z up) → three (x, z, -y).
 import * as THREE from 'three';
-import { FIELD, TREES, POLES, WIRES, HOUSE, WATER_TANK, HOME, WORLD, BOXES, PILLARS, CROWD } from '../data/world';
+import { FIELD, TREES, POLES, WIRES, HOUSE, WATER_TANK, HOME, WORLD, BOXES, PILLARS, CROWD, TRAINING_CONES } from '../data/world';
 import type { DroneDef } from '../data/drones';
 import { buildDrone, type DroneModel } from './droneModel';
 import { loadHdri, HDRIS } from './environment';
@@ -369,7 +369,28 @@ export class World3D {
     };
     const fw = FIELD.x1 - FIELD.x0, fh = FIELD.y1 - FIELD.y0;
     const fcx = (FIELD.x0 + FIELD.x1) / 2, fcy = (FIELD.y0 + FIELD.y1) / 2;
-    if (WORLD.mockup) {
+    if (WORLD.category === 'training') {
+      // training airfield: mown grass, painted white lines, permanent cones
+      const grass = new THREE.Mesh(new THREE.PlaneGeometry(fw, fh), antiTileM({ map: tex('/tex/aerial_grass_rock_diff.jpg', 30, true), color: 0xb5d68a, roughness: 1 }));
+      grass.rotation.x = -Math.PI / 2; grass.position.copy(v3(fcx, fcy, 0.03)); grass.receiveShadow = true; grass.renderOrder = 3; s.add(grass);
+      const paint = new THREE.MeshStandardMaterial({ color: 0xf4f4ee, roughness: 0.9 });
+      const line = (x1: number, y1: number, x2: number, y2: number, w = 0.15) => {
+        const L = Math.hypot(x2 - x1, y2 - y1); const m = new THREE.Mesh(new THREE.PlaneGeometry(L + w, w), paint);
+        m.rotation.x = -Math.PI / 2; m.rotation.z = Math.atan2(y2 - y1, x2 - x1); m.position.copy(v3((x1 + x2) / 2, (y1 + y2) / 2, 0.045)); m.renderOrder = 4; s.add(m);
+      };
+      line(0, 0, 0, 15); line(0, 15, 15, 15); line(15, 15, 15, 0); line(15, 0, 0, 0);     // 15 m square
+      line(-10, 0, 10, 0, 0.1); line(0, -5, 0, 25, 0.1);                                    // pitch / roll axes
+      for (let d = 5; d <= 25; d += 5) { line(-0.6, d, 0.6, d, 0.1); }                     // 5 m distance ticks
+      for (let d = -10; d <= 10; d += 5) if (d) line(d, -0.6, d, 0.6, 0.1);
+      line(-30, 30, 30, 30, 0.12);                                                          // practice lane
+      const ring = (cx: number, cy: number, r: number) => { const m = new THREE.Mesh(new THREE.RingGeometry(r - 0.08, r + 0.08, 96), paint); m.rotation.x = -Math.PI / 2; m.position.copy(v3(cx, cy, 0.045)); m.renderOrder = 4; s.add(m); };
+      ring(-28, 55, 8); ring(-12, 55, 8);                                                   // figure-8 / circle reference
+      const coneG = new THREE.ConeGeometry(0.24, 0.72, 20).translate(0, 0.36, 0);
+      const cones = new THREE.InstancedMesh(coneG, new THREE.MeshStandardMaterial({ color: 0xff6a00, roughness: 0.6 }), TRAINING_CONES.length);
+      const cm = new THREE.Matrix4();
+      TRAINING_CONES.forEach(([x, y], i) => { const p = v3(x, y, 0.03); cones.setMatrixAt(i, cm.makeTranslation(p.x, p.y, p.z)); });
+      cones.castShadow = true; s.add(cones);
+    } else if (WORLD.mockup) {
       // real map as a clean MOCKUP: flat ground, roads, water, buildings as outlined footprint blocks
       const groundM = new THREE.MeshStandardMaterial({ color: 0xc9d3b4, roughness: 1 });
       const gp = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), groundM);

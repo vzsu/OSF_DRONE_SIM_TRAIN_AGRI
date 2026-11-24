@@ -100,6 +100,8 @@ export class LessonRunner {
     const armed = o('ARMED') > 0.5, landed = o('LANDED') > 0.5, x = o('X'), y = o('Y'), z = o('Z'), vz = o('VZ'), mode = o('MODE');
     if (armed) this.t += dt;
     if (o('CRASHED') > 0.5) return this.finish(false, 'Crashed');
+    // lessons are flown by hand: any automatic return / landing / mission (e.g. a failsafe) voids the run
+    if (!this.demo && armed && !landed && (mode === 3 || mode === 4 || mode === 5)) return this.finish(false, 'Automatic RTH / landing / AUTO took over — lessons must be flown by hand');
     if (this.t > d.timeLimit) return this.finish(false, 'Time limit reached');
     // checkride failure injection
     if (this.failName && !this.failDone && this.t > this.failAt && !landed) {

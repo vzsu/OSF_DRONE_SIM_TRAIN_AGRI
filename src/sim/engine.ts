@@ -47,6 +47,10 @@ export class Engine {
   demoSticks: ((t: number) => Partial<Sticks>) | null = null;
   /** Spotlight / track: the FC yaws the aircraft to keep the subject in the gimbal's range (only while the pilot is not yawing) */
   yawAssist: number | null = null;
+  /** training lessons: RTL / LAND / AUTO cannot be selected (fly it by hand) */
+  lockAutoModes = false;
+  onBlocked: (what: string) => void = () => {};
+  private blockedAt = 0;
   coverage = new Coverage();
   /** RC reset button (rising edge) → restart on the pad */
   onResetRequest: () => void = () => {};
@@ -127,10 +131,18 @@ export class Engine {
     if (this.lastModePos >= 0 && use.modePos !== this.lastModePos && this.gcsMode !== null) { this.gcsMode = null; this.guided = null; this.onEvent(950, 'Manual control: mode switch moved'); }
     this.lastModePos = use.modePos;
     const armCmd = this.armCmdFrames > 0; if (armCmd) this.armCmdFrames--;
+    let modeReq = this.gcsMode ?? (use.modePos === 3 ? 5 : (modePositions[use.modePos] ?? 1));
+    let rtlReq = use.rtl;
+    if (this.lockAutoModes && !this.demoSticks) {
+      if (rtlReq || modeReq >= 3) {
+        if (now - this.blockedAt > 4000) { this.blockedAt = now; this.onBlocked(rtlReq || modeReq === 3 ? 'RTH' : modeReq === 4 ? 'auto-land' : 'AUTO'); }
+        rtlReq = false; modeReq = 2;
+      }
+    }
     writeInputs(this.core, {
       roll: use.roll, pitch: use.pitch, yaw: use.yaw, thr: use.thr,
-      mode: this.gcsMode ?? (use.modePos === 3 ? 5 : (modePositions[use.modePos] ?? 1)), armCmd,
-      armSw: use.arm, armSwEnabled: usingSwitchArm(), spray: inAuto ? ms.spray : use.spray, rtl: use.rtl, rcOk: use.ok && !this.rcLost,
+      mode: modeReq, armCmd,
+      armSw: use.arm, armSwEnabled: usingSwitchArm(), spray: inAuto ? ms.spray : use.spray, rtl: rtlReq, rcOk: use.ok && !this.rcLost,
       kill: use.kill, flow: use.flow, auto: ms.cmd,
     }, this.fail);
 
