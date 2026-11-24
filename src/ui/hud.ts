@@ -289,8 +289,9 @@ export class Hud {
       g.strokeStyle = '#3bceac'; g.lineWidth = 2; g.setLineDash([5, 4]); g.beginPath();
       WORLD.geofence.forEach(([x, y], i) => (i ? g.lineTo(X(x), Y(y)) : g.moveTo(X(x), Y(y)))); g.closePath(); g.stroke(); g.setLineDash([]);
     }
-    // flight trail: blue (oldest) → yellow (newest)
-    const tn = this.trail.length;
+    // flight trail on the map (path styles): blue (oldest) → yellow (newest)
+    const st = settings.display.trailStyle ?? 'path';
+    const tn = st === 'path' || st === 'both' ? this.trail.length : 0;
     g.lineWidth = this.big ? 2.5 : 1.5;
     for (let i = 1; i < tn; i++) {
       const a = this.trail[i - 1], b = this.trail[i];

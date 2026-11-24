@@ -5,6 +5,7 @@ import { homeScreen, droneScreen, envScreen, settingsScreen, logsScreen, debrief
 import { missionScreen } from './ui/mission';
 import { realMapScreen } from './ui/realmap';
 import { popIn, popOut, toastIn, toastOut, bindPressFeedback } from './ui/motion';
+import { TRAIL_STYLES, TRAIL_LABEL, type TrailStyle } from './render/trails';
 import { LessonRunner, lessonById, ALL_LESSONS as LESSONS } from './lessons/lessons';
 import { lessonsScreen, LessonCard, showLessonResult, startLesson } from './ui/lessonUI';
 import type { WorldDef } from './data/world';
@@ -57,7 +58,7 @@ const sound = new DroneSound();
 // ---------- lessons + checkride ----------
 const lessons = new LessonRunner();
 const lessonCard = new LessonCard(document.getElementById('hud')!);
-let aidsBackup: { trail: boolean; groundMarker: boolean; orientArrow: boolean } | null = null;
+let aidsBackup: { trailStyle: TrailStyle; groundMarker: boolean; orientArrow: boolean } | null = null;
 function restoreAids() { if (aidsBackup) { Object.assign(settings.display, aidsBackup); aidsBackup = null; } }
 lessons.onObjectiveDone = (i) => { lessonCard.objectiveDone(i); sound.beep(1760, 2, 0.05); speak('Objective complete', 1500); };
 /** beginner course: the first run of an exercise is a demo flown by the autopilot */
@@ -261,8 +262,8 @@ async function startFlight() {
   if (lesson) { if (lesson.holdAssist !== undefined) env.holdAssist = lesson.holdAssist; if (lesson.wind !== undefined) env.windSpd = lesson.wind; }
   if (lesson && settings.checkride) {
     // checkride: aids off (restored when leaving the lesson)
-    if (!aidsBackup) aidsBackup = { trail: settings.display.trail, groundMarker: settings.display.groundMarker, orientArrow: settings.display.orientArrow };
-    Object.assign(settings.display, { trail: false, groundMarker: false, orientArrow: false }); env.holdAssist = false;
+    if (!aidsBackup) aidsBackup = { trailStyle: (settings.display.trailStyle ?? 'path') as TrailStyle, groundMarker: settings.display.groundMarker, orientArrow: settings.display.orientArrow };
+    Object.assign(settings.display, { trailStyle: 'off', groundMarker: false, orientArrow: false }); env.holdAssist = false;
   } else restoreAids();
   engine.start(settings.droneId, env);
   lessons.start(lesson, engine, !!settings.checkride);
@@ -341,6 +342,7 @@ function openPause() {
         <div class="field" style="margin-top:8px"><label>Tank fill at start <span class="val" id="pv-tf">${Math.round(settings.env.tankFill * 100)}%</span></label><input type="range" id="p-tf" min="0" max="1" step="0.05" value="${settings.env.tankFill}"></div>
         <button class="small" id="p-apply">Apply &amp; restart</button></div>
       <div><h3>View</h3><select id="p-view">${VIEWS.map((v) => `<option value="${v}" ${settings.camera.view === v ? 'selected' : ''}>${v === 'cam' ? 'CAMERA (gimbal)' : v.toUpperCase()}</option>`).join('')}</select>
+        <div class="field" style="margin-bottom:6px"><label>Flight trail (Y)</label><select id="p-tr">${TRAIL_STYLES.map((t) => `<option value="${t}" ${(settings.display.trailStyle ?? 'path') === t ? 'selected' : ''}>${TRAIL_LABEL[t]}</option>`).join('')}</select></div>
         <label class="small"><input type="checkbox" id="p-hd" ${settings.display.hudDetail ? 'checked' : ''}> Detailed telemetry (speed, wind, tank, power, keys) — I</label><br>
         <label class="small"><input type="checkbox" id="p-ha" ${engine.env.holdAssist !== false ? 'checked' : ''}> Hold assist (ALT HOLD / ATTI hold position) — next restart</label>
         <h3 style="margin-top:12px">Wind (live)</h3>
@@ -363,6 +365,7 @@ function openPause() {
   q('p-end').onclick = () => endFlight();
   q('p-home').onclick = () => { flying = false; nav('home'); };
   q('p-set').onclick = () => nav('settings');
+  q<HTMLSelectElement>('p-tr').onchange = (ev) => { settings.display.trailStyle = (ev.target as HTMLSelectElement).value as TrailStyle; saveSettings(); };
   q<HTMLInputElement>('p-hd').onchange = (ev) => { settings.display.hudDetail = (ev.target as HTMLInputElement).checked; saveSettings(); };
   q<HTMLInputElement>('p-ha').onchange = (ev) => { settings.env.holdAssist = (ev.target as HTMLInputElement).checked; saveSettings(); };
   q('p-mis').onclick = () => nav('mission');
@@ -398,6 +401,11 @@ onKey((a) => {
   if (a === 'record') hud.toggleRec();
   if (a === 'track') toggleTrack();
   if (a === 'gimbalMode' && engine.drone.fc === 'dji') { const g = world.gimbal; g.mode = g.mode === 'fpv' ? 'follow' : 'fpv'; g.target = null; toast(`Gimbal ${g.mode === 'fpv' ? 'FPV (rolls with the aircraft)' : 'Follow (horizon level)'}`); }
+  if (a === 'trail') {
+    const cur = (settings.display.trailStyle ?? 'path') as TrailStyle;
+    settings.display.trailStyle = TRAIL_STYLES[(TRAIL_STYLES.indexOf(cur) + 1) % TRAIL_STYLES.length]; saveSettings();
+    toast(`Trail: ${TRAIL_LABEL[settings.display.trailStyle]}`);
+  }
   if (a === 'hud') { hud.toggleHidden(); toast(hud.hidden ? 'HUD hidden — press H to show' : 'HUD shown'); }
   if (a === 'hudDetail') { settings.display.hudDetail = !settings.display.hudDetail; saveSettings(); toast(settings.display.hudDetail ? 'Detailed telemetry on' : 'Detailed telemetry off (I)'); }
 });

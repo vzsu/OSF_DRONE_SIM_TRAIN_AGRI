@@ -241,11 +241,11 @@ function displayTab(t: HTMLElement) {
     <label><input type="checkbox" id="oa" ${d.orientArrow ? 'checked' : ''}> Orientation arrow above the drone</label><br>
     <label><input type="checkbox" id="gm" ${d.groundMarker ? 'checked' : ''}> Ground marker under the drone (height cue)</label><br>
     <label><input type="checkbox" id="ss" ${d.showSticks ? 'checked' : ''}> Show stick positions on the HUD</label><br>
-    <label><input type="checkbox" id="tr" ${d.trail !== false ? 'checked' : ''}> Flight trail (3D path + map; blue = oldest, yellow = newest)</label><br>
+    <div class="field" style="margin-top:6px"><label>Flight trail (key Y cycles)</label><select id="trs">${(['off', 'wingtip', 'path', 'both'] as const).map((t) => `<option value="${t}" ${(d.trailStyle ?? 'path') === t ? 'selected' : ''}>${({ off: 'Off', wingtip: 'Wingtip — two white lines, fade after 15 s', path: 'Path — blue → yellow, 4 px', both: 'Both' })[t]}</option>`).join('')}</select></div>
     <label><input type="checkbox" id="hd" ${d.hudDetail ? 'checked' : ''}> Detailed telemetry on the HUD (speed, wind, tank, power, key help) — key I. Key H hides the whole HUD.</label></div></div>`;
   const ch = (id: string, f: (v: boolean) => void) => t.querySelector<HTMLInputElement>('#' + id)!.addEventListener('change', (e) => { f((e.target as HTMLInputElement).checked); saveSettings(); });
   ch('snd', (v) => (settings.audio.on = v)); ch('vce', (v) => (settings.audio.voice = v)); bindSlider(t, 'vol', (v) => (settings.audio.volume = v), (v) => Math.round(v * 100) + '%');
-  ch('oa', (v) => (d.orientArrow = v)); ch('gm', (v) => (d.groundMarker = v)); ch('ss', (v) => (d.showSticks = v)); ch('tr', (v) => (d.trail = v)); ch('hd', (v) => (d.hudDetail = v));
+  ch('oa', (v) => (d.orientArrow = v)); ch('gm', (v) => (d.groundMarker = v)); ch('ss', (v) => (d.showSticks = v)); t.querySelector<HTMLSelectElement>('#trs')!.addEventListener('change', (e) => { d.trailStyle = (e.target as HTMLSelectElement).value as typeof d.trailStyle; saveSettings(); }); ch('hd', (v) => (d.hudDetail = v));
   t.querySelector<HTMLSelectElement>('#units')!.addEventListener('change', (e) => { d.units = (e.target as HTMLSelectElement).value as any; saveSettings(); });
   t.querySelector<HTMLSelectElement>('#q')!.addEventListener('change', (e) => { d.quality = (e.target as HTMLSelectElement).value as any; saveSettings(); });
 }

@@ -10,6 +10,7 @@ import type { Engine } from '../sim/engine';
 import { settings, type View } from '../settings';
 import { cropById, grassById } from '../data/crops';
 import { Gimbal } from './gimbal';
+import { Trails, type TrailStyle } from './trails';
 
 const v3 = (x: number, y: number, z: number) => new THREE.Vector3(x, z, -y);
 const texLoader = new THREE.TextureLoader();
@@ -155,6 +156,8 @@ export class World3D {
   // stabilised gimbal camera (camera drones)
   /** one stabilised gimbal shared by the CAMERA view and the tablet / phone camera feed */
   gimbal = new Gimbal();
+  /** flight trails (wingtip / path / both) */
+  trails = new Trails();
   get gimbalPitch() { return this.gimbal.tilt; }
   set gimbalPitch(v: number) { this.gimbal.setTilt(v); }
   /** camera position under the nose (world) — updated every frame */
@@ -290,6 +293,7 @@ export class World3D {
     this.trailGeo.setDrawRange(0, 0);
     this.trail = new THREE.Line(this.trailGeo, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.95, depthWrite: false }));
     this.trail.frustumCulled = false; this.trail.renderOrder = 6; s.add(this.trail);
+    s.add(this.trails.group);
     this.groundTrailGeo.setAttribute('position', new THREE.BufferAttribute(this.groundTrailPos, 3));
     this.groundTrailGeo.setAttribute('color', new THREE.BufferAttribute(this.trailCol, 3));
     this.groundTrailGeo.setDrawRange(0, 0);
@@ -662,11 +666,12 @@ export class World3D {
   }
 
   /** Reset the flight trail (new flight). */
-  resetTrail() { this.trailN = 0; this.trailGeo.setDrawRange(0, 0); this.groundTrailGeo.setDrawRange(0, 0); this.trailLast.set(1e9, 1e9, 1e9); }
+  resetTrail() { this.trails.reset(); this.trailN = 0; this.trailGeo.setDrawRange(0, 0); this.groundTrailGeo.setDrawRange(0, 0); this.trailLast.set(1e9, 1e9, 1e9); }
 
   private updateTrail(pos: THREE.Vector3, armed: boolean) {
-    const show = settings.display.trail !== false;
-    this.trail.visible = show; this.groundTrail.visible = show && pos.y > 0.5;
+    const st = (settings.display.trailStyle ?? 'path') as TrailStyle;
+    // the 3D line is drawn by the ribbon trails now; keep only the faint ground track (height cue) with the path style
+    this.trail.visible = false; this.groundTrail.visible = (st === 'path' || st === 'both') && pos.y > 0.5;
     if (!armed || this.trailLast.distanceToSquared(pos) < 0.25) return;
     this.trailLast.copy(pos);
     const M = this.TRAIL_MAX;
@@ -750,6 +755,12 @@ export class World3D {
       cu.uWind.value = Math.min(3, e.env.windSpd / 3 + e.env.turb);
     }
     this.updateCamera(settings.camera.view, pos, q, dtReal);
+    {
+      const tNow = performance.now() / 1000;
+      this.trails.style = (settings.display.trailStyle ?? 'path') as TrailStyle;
+      this.trails.sample(pos, q, Math.max(this.droneDef.armLen + this.droneDef.propD * 0.5, 0.18), o('ARMED') > 0.5, tNow);
+      this.trails.draw(this.camera, this.renderer.domElement.clientHeight || window.innerHeight, tNow);
+    }
     this.pilot.visible = true;
     if (this.auxCtx && performance.now() - this.auxAt > 66) { this.auxAt = performance.now(); this.renderAux(pos, q, dtReal); }
     this.pilot.visible = settings.camera.view !== 'vlos';

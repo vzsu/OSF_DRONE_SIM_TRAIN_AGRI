@@ -6,6 +6,15 @@ import type { Sticks } from '../input/input';
 import type { LessonDef, ObjView, Marker } from './lessons';
 import { WORLD } from '../data/world';
 
+/** Exercise 10 start points (metres from the pad, height) — all in front of the pilot, all visible. */
+export const HOME_SPAWNS = [
+  { n: 1, name: 'front-left, 25 m', x: -18, y: 22, z: 7 },
+  { n: 2, name: 'front-right, 30 m', x: 22, y: 26, z: 8 },
+  { n: 3, name: 'far left, 30 m', x: -30, y: 10, z: 6 },
+  { n: 4, name: 'far front, 40 m', x: 12, y: 40, z: 9 },
+  { n: 5, name: 'right, 25 m, high', x: 25, y: 6, z: 11 },
+];
+
 export const BASICS: LessonDef[] = [
   { id: 'b1', n: 1, title: 'Take-off and landing', level: 'Basic', kind: 'any', track: 'basic', timeLimit: 180, brief: 'Arm, climb gently to 2 m, hover 3 s, descend slowly and land, then disarm.' },
   { id: 'b2', n: 2, title: 'In-flight control check', level: 'Basic', kind: 'any', track: 'basic', timeLimit: 180, brief: 'At 3 m give VERY small inputs: a little yaw, a little pitch, a little roll — check each one answers. Then land.' },
@@ -16,7 +25,7 @@ export const BASICS: LessonDef[] = [
   { id: 'b7', n: 7, title: 'Left circle', level: 'Basic', kind: 'any', track: 'basic', timeLimit: 300, brief: 'Slight pitch forward with slight yaw left at the same time: one wide circle to the left (at least 14 m across).' },
   { id: 'b8', n: 8, title: 'Figure 8', level: 'Intermediate', kind: 'any', track: 'basic', timeLimit: 480, brief: 'A wide right circle followed by a wide left circle — an 8 — and back to the start.' },
   { id: 'b9', n: 9, title: 'Spiral climb', level: 'Intermediate', kind: 'any', track: 'basic', timeLimit: 360, brief: 'Pitch forward with slight yaw and a little more throttle: one wide turn (12 m+ across) while climbing at least 3 m.' },
-  { id: 'b10', n: 10, title: 'Bring it home', level: 'Intermediate', kind: 'any', track: 'basic', timeLimit: 240, brief: 'The drone starts somewhere in the air. Fly it back and land on the pad.' },
+  { id: 'b10', n: 10, title: 'Bring it home ×5', level: 'Intermediate', kind: 'any', track: 'basic', timeLimit: 720, brief: 'The drone appears in the air at 5 different places, one after another. Each time: fly it back and land gently on the pad.' },
 ];
 
 const TWO_PI = Math.PI * 2;
@@ -46,17 +55,20 @@ export class BasicLesson {
       case 'b7': this.objectives = [climb, O('One wide circle to the LEFT (≥ 14 m across)'), O('Back near the start (< 6 m)'), land]; break;
       case 'b8': this.objectives = [climb, O('Wide right circle'), O('Wide left circle'), O('Back near the start (< 6 m)'), land]; break;
       case 'b9': this.objectives = [climb, O('Spiral: one wide turn while climbing ≥ 3 m'), land]; break;
-      case 'b10': this.objectives = [O('Fly back to the pad'), O('Land on the pad (< 1.5 m, gentle)')];
+      case 'b10': this.objectives = HOME_SPAWNS.map((sp) => O(`Round ${sp.n}: from ${sp.name} — land on the pad`));
         this.markers = [{ x: 0, y: 0, z: 0, r: 1.5, kind: 'pad', state: 'next' }]; break;
     }
   }
 
   /** Called once after the flight starts (exercise 10 starts in the air). */
-  setup(e: Engine) {
-    if (this.id === 'b10') {
-      const a = (Math.random() - 0.5) * 1.6, d = 18 + Math.random() * 12;
-      e.core.spawnAir(Math.sin(a) * d, 12 + Math.cos(a) * d, 6 + Math.random() * 3, 2);
-    }
+  setup(e: Engine) { if (this.id === 'b10') this.spawn(e, 0); }
+
+  // exercise 10: five rounds, each from a different place in front of the pilot
+  private round = 0; private respawnAt = -1; private clock = 0; private startDist = 30;
+  private spawn(e: Engine, k: number) {
+    const sp = HOME_SPAWNS[k];
+    e.core.spawnAir(sp.x, sp.y, sp.z, 2);
+    this.startDist = Math.hypot(sp.x, sp.y); this.maxDesc = 0; this.respawnAt = -1;
   }
 
   /** On the training airfield the exercise is anchored to the pad (nose north), so the graded cones sit
@@ -176,12 +188,20 @@ export class BasicLesson {
         break;
       }
       case 'b10': {
+        this.clock += dt;
         const dpad = Math.hypot(o('X'), o('Y'));
-        if (this.step === 0) { prog(0, 1 - dpad / 30); if (dpad < 3) { done(0); this.step = 1; } }
-        else if (landed && !armed) {
-          if (dpad <= 1.5 && this.maxDesc < 1.0) { done(1); return 'pass'; }
-          return dpad > 1.5 ? `fail:Landed ${dpad.toFixed(1)} m from the pad centre` : `fail:Hard touchdown (${this.maxDesc.toFixed(1)} m/s)`;
-        } else prog(1, 1 - Math.min(1, dpad / 3));
+        if (this.respawnAt >= 0) { if (this.clock >= this.respawnAt) this.spawn(e, this.round); break; }
+        prog(this.round, 1 - Math.min(1, dpad / this.startDist));
+        if (landed) {
+          const ob = this.objectives[this.round];
+          if (dpad <= 1.5 && this.maxDesc < 1.0) {
+            done(this.round); this.round++;
+            if (this.round >= HOME_SPAWNS.length) return 'pass';
+          } else {
+            ob.text = dpad > 1.5 ? `Round ${this.round + 1}: landed ${dpad.toFixed(1)} m off the pad — again` : `Round ${this.round + 1}: touchdown too hard (${this.maxDesc.toFixed(1)} m/s) — again`;
+          }
+          this.respawnAt = this.clock + 1.5; // next (or repeated) round after a short pause
+        }
         break;
       }
     }
@@ -228,9 +248,9 @@ export class BasicLesson {
       }
       case 'b9': return { ...base, thr: z < this.z0 + 3.5 ? 0.58 : hold(this.z0 + 3.5), pitch: 0.35, yaw: 0.18 };
       case 'b10': {
-        if (this.step === 0) return { ...base, thr: hold(Math.max(4, z)), ...goTo(0, 0, 0.08, 0.5) };
+        if (landed) return { ...base, thr: 0 };
         const d = Math.hypot(o('X'), o('Y'));
-        return { ...base, ...goTo(0, 0, 0.12, 0.3), thr: landed ? 0 : d > 0.6 ? hold(Math.max(z, 1.5)) : z > 1.2 ? 0.3 : 0.38 };
+        return { ...base, ...goTo(0, 0, d > 3 ? 0.08 : 0.12, d > 3 ? 0.5 : 0.3), thr: d > 0.6 ? hold(Math.max(Math.min(z, 8), 2)) : z > 1.2 ? 0.3 : 0.38 };
       }
     }
     return base;

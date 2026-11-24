@@ -140,6 +140,16 @@ In the pause menu you can:
 - **During exercises:** the checklist is a small panel on the left. Mission panels and the tablet button are hidden. Targets are **orange cones with a ground circle** (lime = next, grey = done), not floating rings.
 - **Exercise sizes:** pitch/roll legs are 10 m, the square has 15 m sides, and circles must be at least 14 m across. A tight spin is refused with "Too tight — use less yaw".
 
+### Flight trails (Esc menu → *Flight trail*, Settings → Display, or key **Y** to cycle)
+| Style | What you see |
+|---|---|
+| Off | no trail |
+| Wingtip | two white, semi-transparent lines from the arm tips; each part fades and disappears after 15 s |
+| Path | one 4 px line, blue (oldest) → yellow (newest), for the whole flight, plus its faint ground track and the trail on the map |
+| Both | wingtip + path |
+
+Checkride mode switches trails off.
+
 ### On-screen aids
 - **Flight trail:** a 3D line of the path flown. The **blue** end is the oldest and the **yellow** end is the newest. A faint copy on the ground helps you judge height. The same trail is drawn on the map. Turn it off in Settings → Display.
 - **Map** (bottom right, `M` for big):
@@ -276,7 +286,7 @@ Go to **Settings → Keyboard shortcuts**, click an action and press the new key
 | 7 | Left circle |
 | 8 | Figure 8 |
 | 9 | Spiral climb (pitch + yaw + a little throttle) |
-| 10 | Bring it home (the drone starts in the air; land it on the pad) |
+| 10 | Bring it home ×5 — the drone appears in the air at 5 different places, one after another; each time fly it back and land gently on the pad. A missed or hard landing repeats that round. |
 
 - **Demo first:** each exercise is first flown by the autopilot (*▶ Watch demo, then fly*). Watch the **stick monitor** (bottom left): it has centre axes, a 25% grid and live numbers (T/Y, P/R). The checklist fills as the demo flies. Then it says **"Your turn"** and you fly the same exercise. *Skip demo* jumps straight to your turn. *Fly now* skips the demo entirely.
 - Every finished step plays a short tick, fills its progress bar and ticks the checklist. Results are saved to the student's account.

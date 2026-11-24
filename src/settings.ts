@@ -29,7 +29,7 @@ export interface Settings {
   activeDevice: string; // '' = auto (first connected) | 'keyboard'
   camera: { view: View; fov: number; pilotX: number; pilotY: number; eye: number; fpvTilt: number; vlosZoom: boolean };
   latency: { linkMs: number };
-  display: { units: 'metric' | 'imperial'; orientArrow: boolean; groundMarker: boolean; showSticks: boolean; quality: 'low' | 'high'; trail: boolean; hudDetail?: boolean };
+  display: { units: 'metric' | 'imperial'; orientArrow: boolean; groundMarker: boolean; showSticks: boolean; quality: 'low' | 'high'; trail: boolean; hudDetail?: boolean; trailStyle?: 'off' | 'wingtip' | 'path' | 'both' };
   /** training ground: a named place id, or 'custom' with category + seed */
   place: { id: string; category: 'agri' | 'wedding' | 'training'; seed: number };
   trainee: string;
@@ -71,7 +71,7 @@ export function defaultSettings(): Settings {
     activeDevice: '',
     camera: { view: 'vlos', fov: 50, pilotX: PILOT_DEFAULT.x, pilotY: PILOT_DEFAULT.y, eye: PILOT_DEFAULT.eye, fpvTilt: -15, vlosZoom: false },
     latency: { linkMs: 0 },
-    display: { units: 'metric', orientArrow: false, groundMarker: true, showSticks: true, quality: 'high', trail: true },
+    display: { units: 'metric', orientArrow: false, groundMarker: true, showSticks: true, quality: 'high', trail: true, trailStyle: 'path' },
     place: { id: 'agri-classic', category: 'agri', seed: 0 },
     trainee: '',
     chargeMinutes: 6,
@@ -88,6 +88,8 @@ function load(): Settings {
     const raw = localStorage.getItem(KEY);
     if (!raw) return d;
     const s = JSON.parse(raw);
+    // trail style replaces the old on/off flag
+    if (s.display && !s.display.trailStyle) s.display.trailStyle = s.display.trail === false ? 'off' : 'path';
     // v2 settings: default weather is calm (wind used to be on by default and made hold modes drift)
     if (!s.sv || s.sv < 2) { s.env = { ...s.env, windSpd: 0, gust: 0, turb: 0, holdAssist: true }; s.sv = 2; }
     return { ...d, ...s, env: { ...d.env, ...s.env }, camera: { ...d.camera, ...s.camera }, latency: { ...d.latency, ...s.latency }, display: { ...d.display, ...s.display }, mission: { ...d.mission, ...s.mission }, audio: { ...d.audio, ...s.audio }, place: { ...d.place, ...s.place }, keys: { ...d.keys, ...s.keys } };
