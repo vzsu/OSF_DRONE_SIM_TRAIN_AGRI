@@ -19,6 +19,8 @@ export interface LogHeader {
   schema: number; simVersion: string; id: string; trainee: string; startedAt: string;
   drone: DroneDef; env: EnvSettings; controller: string; linkDelayMs: number;
   place?: string; userId?: string;
+  /** training ground, so a replay rebuilds the same scene */
+  world?: { category: string; seed: number; mapId?: string; name?: string };
   lesson?: { id: string; title: string; passed: boolean; reason: string; time: number; checkride: boolean; failure?: string; objectives: { text: string; done: boolean }[] };
 }
 export interface LogSummary {

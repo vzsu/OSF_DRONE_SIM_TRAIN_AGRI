@@ -84,6 +84,7 @@ On Windows the user starts everything with `start-sim.cmd` (wraps `start-sim.ps1
 21. Navigating code: use CodeGraph first (see `.claude/skills/codegraph/SKILL.md`).
 22. Lessons set `engine.lockAutoModes` (RTL / LAND / AUTO requests become LOITER, tablet auto commands refused); the runner fails a run if mode 3/4/5 is ever active. Lessons fly on `generateWorld('training')` (see `lessonPlace()` in main).
 23. The main loop wraps each frame in try/catch: a HUD bug must not freeze the simulation. Never index `POLES[0]` etc. — some grounds have none.
+24. **Drone Training OS integration** (`../OSF_DRONE_LEARNING_OS`): the Training OS owns students, exams, scores and the UI. The simulator is launched from it at `/dtos?t=<token>` (`src/dtos/*`); `src/app/api/dtos/*` resolve the token / send results / fetch flights server-to-server with the key in `DTOS_KEY_FILE` (default `../OSF_DRONE_LEARNING_OS/data/sim-bridge.key`) and `DTOS_URL` (default `http://127.0.0.1:7870`). In launch mode nothing is saved locally. Replay: `src/replay/player.ts` drives `world.update()` with a fake engine built from the log.
 12. Keep `MODES` order = WASM mode numbers (0 STAB, 1 ALTHOLD, 2 LOITER, 3 RTL, 4 LAND, 5 AUTO). Event codes ≥ 100 are mode changes.
 
 ## Adding things

@@ -84,6 +84,7 @@ export class Engine {
       startedAt: new Date().toISOString(), drone: this.drone, env: this.env,
       controller: pad ? pad.id : 'Keyboard', linkDelayMs: settings.latency.linkMs,
       place: `${WORLD.category}: ${WORLD.name}`,
+      world: { category: WORLD.category, seed: WORLD.seed, mapId: WORLD.mapId, name: WORLD.name },
     });
   }
 

@@ -463,3 +463,24 @@ body.flying #lens { opacity: 1; }
 /* subject tracking box (DJI Spotlight style) */
 #hud .camosd.tracking::after, .gcs .gcs-video.tracking::after { content: ''; position: absolute; left: 50%; top: 50%; width: 120px; height: 90px; transform: translate(-50%, -50%); border: 2px solid #d8ff3d; box-shadow: 0 0 0 1px rgba(0,0,0,.5); pointer-events: none; }
 #hud .camosd .rec { top: 52px; right: auto; left: 50%; transform: translateX(-50%); }
+
+/* ---------- replay viewer (Drone Training OS) — clean dark HUD style ---------- */
+.replay { position: fixed; inset: 0; pointer-events: none; z-index: 40; font: 13px/1.35 var(--sans, system-ui); color: #eef2f0; }
+.replay > div { pointer-events: auto; background: rgba(10,13,12,.74); border: 1px solid rgba(255,255,255,.12); border-radius: 10px; backdrop-filter: blur(6px); }
+.replay .rp-top { position: absolute; top: 14px; left: 16px; right: 16px; max-width: 760px; padding: 9px 14px; }
+.replay .rp-top b { color: #d8ff3d; letter-spacing: .06em; }
+.replay .rp-top .ok { color: #3ccf7a; font-weight: 700; margin-left: 6px; } .replay .rp-top .bad { color: #ff6a5a; font-weight: 700; margin-left: 6px; }
+.replay .rp-sub { font-size: 11px; opacity: .7; margin-top: 2px; }
+.replay .rp-stats { position: absolute; right: 16px; top: 86px; display: grid; gap: 6px; padding: 10px 14px; min-width: 150px; }
+.replay .rp-stats div { display: flex; justify-content: space-between; gap: 14px; } .replay .rp-stats span { opacity: .65; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+.replay .rp-stats b { font-family: var(--mono, monospace); font-size: 15px; }
+.replay .rp-sticks { position: absolute; left: 16px; bottom: 82px; padding: 8px; }
+.replay .rp-bottom { position: absolute; left: 16px; right: 16px; bottom: 14px; display: flex; align-items: center; gap: 8px; padding: 8px 10px; flex-wrap: wrap; }
+.replay .rp-bottom button, .replay .rp-bottom select { background: rgba(255,255,255,.1); color: #fff; border: 1px solid rgba(255,255,255,.25); border-radius: 6px; padding: 5px 10px; font-weight: 700; font-size: 12px; box-shadow: none; text-transform: none; min-height: 0; }
+.replay #rp-play { min-width: 42px; background: #d8ff3d; color: #15140f; border-color: #d8ff3d; }
+.replay .rp-track { position: relative; flex: 1 1 260px; min-width: 160px; }
+.replay .rp-track input { width: 100%; accent-color: #d8ff3d; }
+.replay .rp-ev { position: absolute; left: 0; right: 0; top: -6px; height: 6px; pointer-events: none; }
+.replay .rp-ev i { position: absolute; width: 2px; height: 6px; background: #ffb020; }
+.replay .rp-time { font-family: var(--mono, monospace); font-size: 12px; min-width: 92px; text-align: center; }
+@media (max-width: 640px) { .replay .rp-stats { top: auto; bottom: 150px; } .replay .rp-sticks { display: none; } }

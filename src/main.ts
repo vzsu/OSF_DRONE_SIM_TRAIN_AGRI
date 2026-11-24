@@ -7,6 +7,11 @@ import { realMapScreen } from './ui/realmap';
 import { popIn, popOut, toastIn, toastOut, bindPressFeedback } from './ui/motion';
 import { TRAIL_STYLES, TRAIL_LABEL, type TrailStyle } from './render/trails';
 import { setKbFlightLock } from './input/input';
+import { dtos, sendResult, type DtosLaunch } from './dtos/session';
+import { dtosScreen, ReplayUI } from './dtos/ui';
+import { ReplayPlayer } from './replay/player';
+import { lessonScore } from './course/report';
+import * as THREE_NS from 'three';
 import { LessonRunner, lessonById, ALL_LESSONS as LESSONS } from './lessons/lessons';
 import { lessonsScreen, LessonCard, showLessonResult, startLesson } from './ui/lessonUI';
 import type { WorldDef } from './data/world';
@@ -23,7 +28,7 @@ import { GcsHost, type Telemetry } from './gcs/host';
 import { GcsUI } from './gcs/ui';
 import { LinkHost } from './net/linkHost';
 import { DRONES } from './data/drones';
-import { HOME, setWorld, generateWorld, placeById, WORLD, overCrowd, fenceBreach, BOXES } from './data/world';
+import { HOME, setWorld, generateWorld, placeById, WORLD, overCrowd, fenceBreach, BOXES, PLACES } from './data/world';
 import * as THREE from 'three';
 import { defaultPlan } from './sim/mission';
 import { settings, saveSettings, type View } from './settings';
@@ -74,14 +79,23 @@ function endDemo(skipped: boolean) {
 lessons.onFinish = (r) => {
   if (lessons.demo) { setTimeout(() => endDemo(false), 1200); return; } // demo results are never saved
   engine.recorder.header.lesson = { ...r, objectives: r.objectives.map((o) => ({ text: o.text, done: o.done })) };
+  if (dtos?.launch.mode === 'fly' && r.id === dtos.launch.lessonId) {
+    const def = lessonById(r.id);
+    const score = lessonScore(r.passed, r.time, def?.timeLimit ?? 300, r.checkride);
+    const snap = engine.recorder.finish(engine.o('CRASHED') > 0.5 ? 'Crash' : 'Completed', engine.o('CRASH_CAUSE'), engine.o('FLIGHT_TIME'));
+    void sendResult({ lessonId: r.id, passed: r.passed, score, time: r.time, checkride: r.checkride, reason: r.reason, objectives: r.objectives.map((o) => ({ text: o.text, done: o.done })), drone: engine.drone.name }, snap)
+      .then((res) => res.ok
+        ? toast(`Sent to ${dtos!.launch.orgName}${r.passed ? ` — ${dtos!.launch.exercise?.id ?? ''} score ${res.exerciseScore ?? score}` : ' — attempt recorded'}`)
+        : toast(`Could not send the result: ${res.error}`, true));
+  }
   void saveProgress({ lessons: { [r.id]: { passed: r.passed, time: r.time, checkride: r.checkride, at: new Date().toISOString() } } });
   speak(r.passed ? 'Lesson passed. Well done' : `Lesson failed. ${r.reason}`, 0);
   sound.beep(r.passed ? 1320 : 400, r.passed ? 3 : 2, 0.1);
   const idx = LESSONS.findIndex((l) => l.id === r.id);
   const next = r.passed && LESSONS[idx + 1] ? LESSONS[idx + 1] : null;
   setTimeout(() => showLessonResult(r, {
-    retry: () => void startFlight(), debrief: () => void endFlight(), menu: () => { flying = false; restoreAids(); nav('lessons'); },
-    next: next ? () => { flying = false; demoNext = next.track === 'basic'; startLesson(next, nav); } : null,
+    retry: () => void startFlight(), debrief: () => void endFlight(), menu: () => { flying = false; restoreAids(); nav(dtos ? 'dtos' : 'lessons'); },
+    next: next && !dtos ? () => { flying = false; demoNext = next.track === 'basic'; startLesson(next, nav); } : null,
   }), r.passed ? 600 : 900);
 };
 // ---------- ground-station tablet (slides up from the bottom; same UI on LAN devices) ----------
@@ -205,7 +219,7 @@ function nav(screen: string, arg?: unknown, history: 'push' | 'replace' | 'none'
     setCrumbs(breadcrumbHtml(crumbsFor(parse(p ?? location.pathname))));
   }
   if (screen === 'freefly') { settings.lesson = null; saveSettings(); screen = 'fly'; }
-  const signedIn = !!currentUser || offline || isGuest();
+  const signedIn = !!currentUser || offline || isGuest() || !!dtos;
   if (screen === 'fly') { if (!signedIn) { loginScreen(nav); return; } void startFlight(); return; }
   if (screen === 'resume' && flying) {
     // back from settings / mission planner opened in the pause menu
@@ -220,6 +234,13 @@ function nav(screen: string, arg?: unknown, history: 'push' | 'replace' | 'none'
   if (keep) { engine.paused = true; setBack('resume', '← Back to flight'); }
   else { flying = false; setBack('home', '← Home'); restoreAids(); }
   hud.show(false);
+  if (screen === 'dtos') {
+    void dtosScreen({
+      fly: (lessonId, demo) => { const def = lessonById(lessonId); if (!def) return; demoNext = demo && def.track === 'basic'; startLesson(def, nav); },
+      replay: (log, launch) => void startReplay(log, launch),
+    });
+    return;
+  }
   if (screen === 'logout') { void logout().then(() => { void loadProgress(); window.history.pushState(null, '', '/login'); setCrumbs(''); loginScreen(nav); }); return; }
   // students and instructors sign in, or use guest mode (unless the server is unreachable → local practice)
   if (screen === 'login' || !signedIn) { if (location.pathname !== '/login') window.history.replaceState(null, '', '/login'); setCrumbs(''); loginScreen(nav); return; }
@@ -298,7 +319,8 @@ async function endFlight() {
   flying = false;
   closePause();
   const log = engine.finish();
-  if (isGuest()) toast('Guest mode — this flight is not saved');
+  if (dtos) { /* lesson results + flight were sent to the Training OS */ }
+  else if (isGuest()) toast('Guest mode — this flight is not saved');
   else {
     const where = await saveLog(log);
     toast(where === 'server' ? 'Flight log saved on the training server' : 'Server unreachable — log kept in this browser', where !== 'server');
@@ -449,6 +471,7 @@ function frame(now: number) {
 function frameInner(now: number) {
   const dt = lastT ? Math.min((now - lastT) / 1000, 0.1) : 0;
   lastT = now;
+  if (replay) { replay.p.step(dt); world.update(replay.p.fake, dt); replay.ui.update(); return; }
   if (flying) {
     engine.frame(now);
     if (world.orbit.on && !missionWorking()) setOrbit(false, 'Orbit view closed — the mission is not running');
@@ -503,6 +526,28 @@ function frameInner(now: number) {
     world.camera.lookAt(0, 0, -50);
     world.renderer.render(world.scene, world.camera);
   }
+}
+
+// ---------- replay of a recorded flight (opened from the Drone Training OS) ----------
+let replay: { p: ReplayPlayer; ui: ReplayUI } | null = null;
+async function startReplay(log: FlightLog, launch: DtosLaunch) {
+  const h = log.header;
+  const cat = (h.world?.category ?? String(h.place ?? 'training').split(':')[0]).trim();
+  const category = (['agri', 'wedding', 'training'].includes(cat) ? cat : 'agri') as 'agri' | 'wedding' | 'training';
+  const named = PLACES.find((p) => h.place?.endsWith(p.name));
+  setWorld(generateWorld(category, h.world?.seed ?? named?.seed ?? 0, h.world?.name ?? named?.name ?? ''));
+  world.rebuildSite();
+  world.setDrone(h.drone);
+  void world.setEnvironment(settings.env.hdri, settings.env.timeOfDay);
+  world.setTimeOfDay(settings.env.timeOfDay);
+  world.resetTrail();
+  uiEl.innerHTML = ''; hud.show(false);
+  const p = new ReplayPlayer(log);
+  world.orbit.start(new THREE_NS.Vector3(0, 2, 0), new THREE_NS.Vector3(18, 9, 18));
+  replay = { p, ui: new ReplayUI(p, launch, () => world.resetTrail(), () => {
+    replay?.ui.remove(); replay = null; world.orbit.on = false;
+    uiEl.innerHTML = '<div class="screen"><div class="wrap"><div class="home-hero"><h1>Replay closed</h1><p class="muted">You can close this tab and go back to Drone Training OS.</p></div></div></div>';
+  }) };
 }
 
 async function boot() {

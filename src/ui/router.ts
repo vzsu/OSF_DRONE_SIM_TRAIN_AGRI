@@ -15,7 +15,7 @@ const LESSON_RE = /^[a-z0-9]{1,12}$/;
 const STATIC: Record<string, string> = {
   '/': 'home', '/login': 'login', '/fly': 'fly', '/drones': 'drone', '/environment': 'env', '/settings': 'settings',
   '/mission': 'mission', '/maps': 'realmap', '/logs': 'logs', '/lessons': 'lessons', '/admin': 'admin',
-  '/course': 'course', '/course/checklists': 'checklists', '/course/practical': 'practical',
+  '/course': 'course', '/course/checklists': 'checklists', '/course/practical': 'practical', '/dtos': 'dtos',
 };
 const BY_SCREEN: Record<string, string> = Object.fromEntries(Object.entries(STATIC).map(([p, s]) => [s, p]));
 BY_SCREEN.freefly = '/fly';
@@ -42,7 +42,7 @@ export function pathFor(screen: string, arg?: string): string | null {
 
 const TITLE: Record<string, string> = {
   login: 'Sign in', fly: 'Flight', drone: 'Drones', env: 'Environment', settings: 'Settings', mission: 'Mission planner',
-  realmap: 'Real map', logs: 'Flight logs', lessons: 'Lessons', admin: 'Admin', course: 'Course', checklists: 'Checklists', practical: 'Practical training',
+  realmap: 'Real map', logs: 'Flight logs', lessons: 'Lessons', admin: 'Admin', course: 'Course', checklists: 'Checklists', practical: 'Practical training', dtos: 'Drone Training OS',
 };
 
 export function crumbsFor(r: Route): Crumb[] {
