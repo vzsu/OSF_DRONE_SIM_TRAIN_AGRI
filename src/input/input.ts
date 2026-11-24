@@ -45,7 +45,11 @@ export function setCaptureKey(f: ((code: string) => void) | null) { captureKey =
 window.addEventListener('keydown', (e) => {
   const tag = (e.target as HTMLElement)?.tagName;
   if (captureKey) { e.preventDefault(); const f = captureKey; captureKey = null; f(e.code); return; }
-  if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+  // only text entry swallows keys; a slider / checkbox / button that kept focus must not kill the shortcuts
+  const t = e.target as HTMLInputElement;
+  const typing = tag === 'TEXTAREA' || tag === 'SELECT' || (tag === 'INPUT' && !['range', 'checkbox', 'radio', 'button', 'submit', 'color'].includes(t.type)) || t?.isContentEditable;
+  if (typing) return;
+  if (tag === 'INPUT' && actionsFor(e.code).length) { e.preventDefault(); t.blur(); }
   const acts = actionsFor(e.code);
   if (!keys.has(e.code)) {
     for (const a of acts) {

@@ -391,7 +391,7 @@ function openPause() {
 }
 
 /** Orbit view is only for watching a planned mission while it is being flown. */
-const missionWorking = () => engine.o('ARMED') > 0.5 && engine.mission.legs.length > 0 && [3, 4, 5].includes(engine.o('MODE'));
+const missionWorking = () => engine.o('ARMED') > 0.5 && engine.mission.legs.length > 0 && (engine.mission.active || [3, 4, 5].includes(engine.o('MODE')));
 let orbitHint: HTMLDivElement | null = null;
 function setOrbit(on: boolean, why = '') {
   if (on === world.orbit.on) return;
@@ -410,7 +410,7 @@ onKey((a) => {
   if (!flying) return;
   if (a === 'orbit' && !pauseEl) {
     if (world.orbit.on) setOrbit(false);
-    else if (engine.o('ARMED') > 0.5 && engine.mission.legs.length > 0 && engine.o('MODE') === 5) setOrbit(true);
+    else if (missionWorking()) { if (gcs.isOpen()) gcs.close(); setOrbit(true); }
     else toast('Orbit view works only while a planned mission is flying in AUTO', true);
   }
   if (uiEl.querySelector('.screen')) { if (a === 'pause') nav('resume'); return; } // settings/mission open mid-flight
