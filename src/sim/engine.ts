@@ -45,6 +45,8 @@ export class Engine {
   guided: { x: number; y: number; z: number } | null = null;
   /** lesson demo: scripted stick inputs replace the pilot's (the HUD stick monitor shows them) */
   demoSticks: ((t: number) => Partial<Sticks>) | null = null;
+  /** Spotlight / track: the FC yaws the aircraft to keep the subject in the gimbal's range (only while the pilot is not yawing) */
+  yawAssist: number | null = null;
   coverage = new Coverage();
   /** RC reset button (rising edge) → restart on the pad */
   onResetRequest: () => void = () => {};
@@ -104,6 +106,7 @@ export class Engine {
     use = this.queue[0].s;
     if (delay <= 0) { use = s; this.queue = [this.queue[this.queue.length - 1]]; }
     if (this.demoSticks) use = { ...use, ...this.demoSticks(this.o('T')), ok: true };
+    if (this.yawAssist !== null && Math.abs(use.yaw) < 0.05) use = { ...use, yaw: this.yawAssist };
     this.sticks = use;
     if (use.reset && !this.resetPrev) { this.resetPrev = true; this.onResetRequest(); return; }
     this.resetPrev = use.reset;

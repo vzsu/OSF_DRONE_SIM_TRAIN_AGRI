@@ -23,7 +23,7 @@ export interface Telemetry {
   sats: number; hdop: number; fix: number; soc: number; volt: number; amps: number; tank: number;
   x: number; y: number; z: number; agl: number; yaw: number; gs: number; vs: number; homeDist: number; spraying: boolean; flow: number; warn: number;
   flightTime: number; gcsMode: number | null;
-  cam: { rec: boolean; recSec: number; photos: number; gimbal: number };
+  cam: { rec: boolean; recSec: number; photos: number; gimbal: number; mode: string };
   alt: { agl: number; rel: number; msl: number; crop: number; tgt: number };
   mission: { phase: Phase; idx: number; lanes: number; lanesDone: number; legA: [number, number] | null; legB: [number, number] | null; bp: { x: number; y: number; reason: string } | null; xte: number };
   plan: MissionPlan; packs: (Pack & { status: string })[]; chargeMinutes: number;
@@ -33,12 +33,13 @@ export interface Telemetry {
 export type GcsCmd =
   | { t: 'plan'; plan: MissionPlan } | { t: 'start' } | { t: 'pause' } | { t: 'resume' } | { t: 'rth' } | { t: 'manual' }
   | { t: 'pack'; id: string; to: 'drone' | 'charger' | 'ground' } | { t: 'refill' } | { t: 'abort' }
-  | { t: 'takeoff' } | { t: 'land' } | { t: 'photo' } | { t: 'rec' } | { t: 'gimbal'; pitch: number };
+  | { t: 'takeoff' } | { t: 'land' } | { t: 'photo' } | { t: 'rec' } | { t: 'gimbal'; pitch: number } | { t: 'gimbalMode'; mode: 'follow' | 'fpv' | 'track' };
 
 export interface HostHooks {
   beep: (f: number, n?: number, len?: number) => void; toast: (t: string, bad?: boolean) => void; missionChanged: () => void;
   /** camera drones: photo, record toggle, gimbal pitch get/set, recording state */
   photo: () => void; rec: () => void; gimbal: (p?: number) => number; camState: () => { rec: boolean; recSec: number; photos: number };
+  gimbalMode: (m: 'follow' | 'fpv' | 'track') => string; gimbalState: () => string;
 }
 
 export class GcsHost {
@@ -83,7 +84,7 @@ export class GcsHost {
       sats: o('SATS'), hdop: o('HDOP'), fix: o('FIX'), soc: o('BATT_SOC'), volt: o('BATT_V'), amps: o('BATT_I'), tank: o('TANK_L'),
       x, y, z: o('Z'), agl: o('RADAR_AGL') >= 0 ? o('RADAR_AGL') : o('Z'), yaw: o('YAW'), gs: o('GNDSPEED'), vs: o('VSPEED'), homeDist: o('HOME_DIST'),
       spraying: o('SPRAYING') > 0.5, flow: e.sticks.flow, warn: o('WARN'), flightTime: o('FLIGHT_TIME'), gcsMode: e.gcsMode,
-      cam: { ...this.hooks.camState(), gimbal: this.hooks.gimbal() },
+      cam: { ...this.hooks.camState(), gimbal: this.hooks.gimbal(), mode: this.hooks.gimbalState() },
       alt: { agl: o('RADAR_AGL') >= 0 ? o('RADAR_AGL') : o('Z'), rel: o('BARO_ALT'), msl: e.env.elev + o('Z'), crop: e.env.cropH ?? 0, tgt: o('TGT_ALT') },
       mission: { phase: m.phase, idx: m.idx, lanes: m.laneCount, lanesDone: m.lanesDone, legA: leg ? leg.a : null, legB: leg ? leg.b : null, bp: m.breakpoint ? { x: m.breakpoint.x, y: m.breakpoint.y, reason: m.breakpoint.reason } : null, xte: m.xte },
       plan: settings.mission, packs: e.bay.packs.map((p) => ({ ...p, status: e.bay.status(p) })), chargeMinutes: e.bay.chargeMinutes,
@@ -115,6 +116,7 @@ export class GcsHost {
       case 'photo': this.hooks.photo(); return '';
       case 'rec': this.hooks.rec(); return '';
       case 'gimbal': this.hooks.gimbal(Math.max(-90, Math.min(20, +c.pitch || 0))); return '';
+      case 'gimbalMode': if (!['follow', 'fpv', 'track'].includes(c.mode)) return 'bad mode'; this.hooks.gimbalMode(c.mode); return '';
     }
     return '';
   }

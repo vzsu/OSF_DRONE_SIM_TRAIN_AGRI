@@ -9,6 +9,7 @@ import { loadHdri, HDRIS } from './environment';
 import type { Engine } from '../sim/engine';
 import { settings, type View } from '../settings';
 import { cropById, grassById } from '../data/crops';
+import { Gimbal } from './gimbal';
 
 const v3 = (x: number, y: number, z: number) => new THREE.Vector3(x, z, -y);
 const texLoader = new THREE.TextureLoader();
@@ -152,8 +153,12 @@ export class World3D {
   private trailN = 0;
   private trailLast = new THREE.Vector3(1e9, 1e9, 1e9);
   // stabilised gimbal camera (camera drones)
-  gimbalPitch = -15;
-  private gimbalQ = new THREE.Quaternion();
+  /** one stabilised gimbal shared by the CAMERA view and the tablet / phone camera feed */
+  gimbal = new Gimbal();
+  get gimbalPitch() { return this.gimbal.tilt; }
+  set gimbalPitch(v: number) { this.gimbal.setTilt(v); }
+  /** camera position under the nose (world) — updated every frame */
+  gimbalPos = new THREE.Vector3();
   // auxiliary drone-camera render for LAN screens (set by LinkHost)
   auxCtx: CanvasRenderingContext2D | null = null;
   private auxCam = new THREE.PerspectiveCamera(52, 16 / 9, 0.05, 4000);
@@ -710,6 +715,10 @@ export class World3D {
     this.pilot.lookAt(pos.x, 0, pos.z);
     this.updateSpray(e, pos, q, dtReal);
     this.updateTrail(pos, o('ARMED') > 0.5);
+    if (this.droneDef.fc === 'dji') {
+      this.gimbalPos.copy(pos).add(new THREE.Vector3(Math.max(this.droneDef.bodyR * 0.35, 0.08), -Math.max(this.droneDef.bodyR * 0.12, 0.05), 0).applyQuaternion(q));
+      this.gimbal.update(q, this.gimbalPos, dtReal);
+    }
     {
       const cu = this.cropUniforms, d = this.droneDef;
       const agl = Math.max(o('Z') - (e.env.cropH ?? 0), 0.3);
@@ -791,16 +800,8 @@ export class World3D {
     } else if (view === 'cam') {
       // gimbal camera under the nose: 3-axis stabilised (horizon stays level), follows heading
       // smoothly, pitch set by the gimbal wheel (keys PageUp/PageDown or the radio knob)
-      const fwd = new THREE.Vector3(1, 0, 0).applyQuaternion(q); fwd.y = 0;
-      if (fwd.lengthSq() < 1e-6) fwd.set(1, 0, 0);
-      fwd.normalize();
-      const yaw = Math.atan2(-fwd.z, fwd.x);
-      const want = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, yaw - Math.PI / 2, 0, 'YXZ'))
-        .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), this.gimbalPitch * Math.PI / 180));
-      this.gimbalQ.slerp(want, 1 - Math.exp(-dt * 10));
-      c.quaternion.copy(this.gimbalQ);
-      const off = new THREE.Vector3(Math.max(d.bodyR * 0.35, 0.08), -Math.max(d.bodyR * 0.12, 0.05), 0).applyQuaternion(q);
-      c.position.copy(pos).add(off);
+      c.quaternion.copy(this.gimbal.q);
+      c.position.copy(this.gimbalPos); void dt;
       fov = 52; // ~84° diagonal wide camera (Mavic / Air / Phantom class)
     } else {
       c.position.set(pos.x, Math.max(pos.y + 60, 60), pos.z);
@@ -815,13 +816,13 @@ export class World3D {
    *  so it gets the same tone mapping / colours as the screen. */
   private renderAux(pos: THREE.Vector3, q: THREE.Quaternion, dt: number) {
     const ctx = this.auxCtx!, W = ctx.canvas.width, H = ctx.canvas.height, d = this.droneDef!;
-    const fwd = new THREE.Vector3(1, 0, 0).applyQuaternion(q); fwd.y = 0; if (fwd.lengthSq() < 1e-6) fwd.set(1, 0, 0); fwd.normalize();
-    const yaw = Math.atan2(-fwd.z, fwd.x);
-    const pitch = d.fc === 'dji' ? this.gimbalPitch : -20;
-    const want = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, yaw - Math.PI / 2, 0, 'YXZ')).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), pitch * Math.PI / 180));
-    if (d.fc === 'dji') this.auxQ.slerp(want, 1 - Math.exp(-Math.max(dt, 0.016) * 10)); else this.auxQ.copy(q).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -Math.PI / 2)).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), pitch * Math.PI / 180));
+    void dt;
+    if (d.fc === 'dji') { this.auxQ.copy(this.gimbal.q); this.auxCam.position.copy(this.gimbalPos); } // same gimbal as the pilot's view
+    else {
+      this.auxQ.copy(q).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -Math.PI / 2)).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -20 * Math.PI / 180));
+      this.auxCam.position.copy(pos).add(new THREE.Vector3(Math.max(d.bodyR * 0.35, 0.08), -Math.max(d.bodyR * 0.12, 0.05), 0).applyQuaternion(q));
+    }
     this.auxCam.quaternion.copy(this.auxQ);
-    this.auxCam.position.copy(pos).add(new THREE.Vector3(Math.max(d.bodyR * 0.35, 0.08), -Math.max(d.bodyR * 0.12, 0.05), 0).applyQuaternion(q));
     this.auxCam.fov = d.fc === 'dji' ? 52 : 70; this.auxCam.updateProjectionMatrix();
     const r = this.renderer, dpr = r.getPixelRatio();
     const vis = this.drone!.group.visible; this.drone!.group.visible = false;
@@ -843,7 +844,7 @@ export class World3D {
     this.lookTarget.copy(pos);
     this.chasePos.copy(pos).add(new THREE.Vector3(0, 4, 8));
     this.resetTrail();
-    this.gimbalQ.copy(this.camera.quaternion);
+    this.gimbal.pan = NaN; this.gimbal.mode = 'follow'; this.gimbal.target = null;
     for (let i = 0; i < this.N; i++) { this.pLife[i] = 0; this.pPos[i * 3 + 1] = -100; }
   }
 }

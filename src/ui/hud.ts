@@ -85,7 +85,7 @@ export class Hud {
       <div class="box mini" id="h-minibox"><canvas id="h-mini" width="200" height="220"></canvas><div class="small" id="h-cov"></div></div>
       <div class="box mission" id="h-mission"></div>
       <div class="camosd" id="h-cam"><div class="thirds"></div><div class="rec" id="h-rec"></div><div class="camline" id="h-camline"></div></div>
-      <div class="help" id="h-help">Esc pause · V view · keyboard: W/S thr · A/D yaw · arrows pitch/roll · Enter arm · 1 STAB 2 ALT HOLD 3 LOITER · Space spray · [ ] pump · K E-stop · R RTL · 4 AUTO · M map · B battery/refill · Backspace reset · camera drones: C record, PgUp/PgDn gimbal</div>
+      <div class="help" id="h-help">Esc pause · V view · keyboard: W/S thr · A/D yaw · arrows pitch/roll · Enter arm · 1 STAB 2 ALT HOLD 3 LOITER · Space spray · [ ] pump · K E-stop · R RTL · 4 AUTO · M map · B battery/refill · Backspace reset · camera drones: C record, PgUp/PgDn gimbal tilt, T track subject, F Follow/FPV</div>
     `;
     this.mini = $('h-mini') as HTMLCanvasElement;
     gsap.set($('h-warn'), { xPercent: -50, x: 0 }); // centred via GSAP so pulses keep it centred
@@ -197,9 +197,10 @@ export class Hud {
     if (!on) return;
     const t = (now - this.recStart) / 1000;
     $('h-rec').innerHTML = this.rec ? `<span class="dot"></span> REC ${String(Math.floor(t / 60)).padStart(2, '0')}:${String(Math.floor(t % 60)).padStart(2, '0')}` : 'STANDBY · press C to record';
-    const w = window as unknown as { __sim?: { world: { gimbalPitch: number } } };
-    const gp = w.__sim?.world.gimbalPitch ?? 0;
-    $('h-camline').textContent = `4K 30fps · ISO 100 · 1/60 · gimbal ${gp.toFixed(0)}° · H ${e.o('Z').toFixed(1)} m · D ${e.o('HOME_DIST').toFixed(0)} m · ${e.o('GNDSPEED').toFixed(1)} m/s`;
+    const w = window as unknown as { __sim?: { world: { gimbalPitch: number; gimbal: { mode: string } } } };
+    const gp = w.__sim?.world.gimbalPitch ?? 0, gm = w.__sim?.world.gimbal.mode ?? 'follow';
+    $('h-cam').classList.toggle('tracking', gm === 'track');
+    $('h-camline').textContent = `4K 30fps · ISO 100 · 1/60 · gimbal ${gp.toFixed(0)}° ${gm === 'track' ? '· ◎ TRACKING (T)' : gm === 'fpv' ? '· FPV' : '· FOLLOW'} · H ${e.o('Z').toFixed(1)} m · D ${e.o('HOME_DIST').toFixed(0)} m · ${e.o('GNDSPEED').toFixed(1)} m/s`;
   }
 
   /** Vertical altitude tape (height above ground), target bug and vertical-speed bar. */

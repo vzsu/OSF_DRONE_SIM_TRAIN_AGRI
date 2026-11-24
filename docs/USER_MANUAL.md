@@ -115,7 +115,12 @@ You can set each mode-switch position to STABILIZE, ALT HOLD, LOITER, RTL, LAND 
 - **VLOS:** what the pilot standing on the ground sees. This is the main view for real-world practice.
 - **Chase:** third-person view from behind the drone.
 - **FPV:** onboard nose camera.
-- **CAMERA:** stabilised gimbal camera on DJI camera drones. The horizon stays level. The overlay shows rule-of-thirds lines, REC, gimbal angle, height and distance. On camera drones, the radio's pump knob controls gimbal tilt.
+- **CAMERA:** 3-axis stabilised gimbal on DJI camera drones. The same gimbal feeds the pilot view, the tablet and phones.
+  - **Follow** (default): the horizon stays level however the drone pitches or rolls. Pan follows the heading smoothly, and the tilt glides at the gimbal's speed instead of jumping.
+  - **FPV** (key **F**): the picture rolls with the aircraft.
+  - **Track** (key **T**, or *Track subject* in the tablet camera tab): locks on whatever is in the middle of the picture, like DJI Spotlight / POI. The camera stays on the subject and the flight controller yaws the drone to keep it in frame while you fly with the sticks. Yawing yourself overrides it. Press T again to release.
+  - Tilt: PgUp/PgDn, the radio knob or the tablet slider.
+  - Original note: The horizon stays level. The overlay shows rule-of-thirds lines, REC, gimbal angle, height and distance. On camera drones, the radio's pump knob controls gimbal tilt.
 - **Top:** map view from straight above.
 
 ### Pause menu (Esc)

@@ -458,3 +458,6 @@ body.flying #lens { opacity: 1; }
 #hud .lc-obj { grid-template-columns: 14px 1fr 46px; gap: 6px; padding: 2px 0; }
 #hud.lesson .mission { display: none !important; }
 #hud .altbox .line { gap: 12px; }
+/* subject tracking box (DJI Spotlight style) */
+#hud .camosd.tracking::after, .gcs .gcs-video.tracking::after { content: ''; position: absolute; left: 50%; top: 50%; width: 120px; height: 90px; transform: translate(-50%, -50%); border: 2px solid #d8ff3d; box-shadow: 0 0 0 1px rgba(0,0,0,.5); pointer-events: none; }
+#hud .camosd .rec { top: 52px; right: auto; left: 50%; transform: translateX(-50%); }

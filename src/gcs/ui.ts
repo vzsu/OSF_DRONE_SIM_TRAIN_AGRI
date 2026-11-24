@@ -259,9 +259,12 @@ export class GcsUI {
         <div class="seg"><button data-cm="photo" class="${this.camMode === 'photo' ? 'on' : ''}">Photo</button><button data-cm="video" class="${this.camMode === 'video' ? 'on' : ''}">Video</button></div>
         <button class="shutter ${this.camMode} ${c.rec ? 'rec' : ''}" id="g-shut" title="Shutter"></button>
         <div class="kv small"><span>Recording</span><span>${c.rec ? `● ${fmtT(c.recSec)}` : 'no'}</span><span>Photos</span><span>${c.photos}</span><span>Format</span><span>4K 30fps · ISO 100 · 1/60 · EV 0</span></div>
+        <div class="seg"><button data-gm="follow" class="${c.mode === 'follow' ? 'on' : ''}">Follow</button><button data-gm="fpv" class="${c.mode === 'fpv' ? 'on' : ''}">FPV</button><button data-gm="track" class="${c.mode === 'track' ? 'on' : ''}">Track subject</button></div>
+        <p class="small muted">${c.mode === 'track' ? 'Tracking: the camera stays on the subject; the aircraft turns to keep it in frame. Fly with the sticks.' : c.mode === 'fpv' ? 'FPV: the picture rolls with the aircraft.' : 'Follow: horizon level, smooth pan with the aircraft.'}</p>
         <label class="gsl">Gimbal tilt<b>${c.gimbal.toFixed(0)}°</b><input type="range" id="g-gimsl" min="-90" max="20" step="1" value="${c.gimbal}"></label>
         <div class="grid2"><button data-gp="0">Level 0°</button><button data-gp="-45">−45°</button><button data-gp="-90">Down −90°</button><button data-gp="-15">Default −15°</button></div>
         <p class="small muted">Shots for weddings: slow reveal (pitch + tilt up), orbit around the mandap, top-down at −90°. Never fly over the guests.</p>`;
+      p.querySelectorAll<HTMLButtonElement>('[data-gm]').forEach((b) => (b.onclick = () => void this.send({ t: 'gimbalMode', mode: b.dataset.gm as 'follow' }).then(() => this.renderPanel(true))));
       p.querySelectorAll<HTMLButtonElement>('[data-cm]').forEach((b) => (b.onclick = () => { this.camMode = b.dataset.cm as 'photo'; this.renderPanel(true); }));
       p.querySelector<HTMLButtonElement>('#g-shut')!.onclick = () => void this.send({ t: this.camMode === 'photo' ? 'photo' : 'rec' }).then(() => this.renderPanel(true));
       const gs = p.querySelector<HTMLInputElement>('#g-gimsl')!;
@@ -418,7 +421,8 @@ export class GcsUI {
     const v = this.link.video?.() ?? null;
     if (v && v.parentElement !== box) box.prepend(v);
     const c = t.cam;
-    this.root.querySelector('#g-camtop')!.innerHTML = `${c.rec ? `<span class="recdot"></span> REC ${fmtT(c.recSec)}` : 'VIDEO · 4K 30'} &nbsp; · &nbsp; ${c.photos} photos`;
+    this.root.querySelector('#g-camtop')!.innerHTML = `${c.rec ? `<span class="recdot"></span> REC ${fmtT(c.recSec)}` : 'VIDEO · 4K 30'} &nbsp; · &nbsp; ${c.photos} photos &nbsp; · &nbsp; ${c.mode === 'track' ? '◎ TRACKING' : c.mode.toUpperCase()}`;
+    this.root.querySelector('#g-video')!.classList.toggle('tracking', c.mode === 'track');
     this.root.querySelector('#g-cambot')!.innerHTML = `<b>H</b> ${t.alt.agl.toFixed(1)} m &nbsp; <b>D</b> ${t.homeDist.toFixed(0)} m &nbsp; <b>H.S</b> ${t.gs.toFixed(1)} m/s &nbsp; <b>V.S</b> ${t.vs.toFixed(1)} m/s`;
     this.root.querySelector<HTMLElement>('#g-gim')!.style.top = `${((20 - c.gimbal) / 110 * 100).toFixed(0)}%`;
   }

@@ -31,6 +31,8 @@ export const KEY_ACTIONS: KeyAction[] = [
   { id: 'record', label: 'Camera record', def: 'KeyC', group: 'App' },
   { id: 'gimbalUp', label: 'Gimbal tilt up', def: 'PageUp', group: 'App' },
   { id: 'gimbalDown', label: 'Gimbal tilt down', def: 'PageDown', group: 'App' },
+  { id: 'track', label: 'Camera: track subject in centre / release', def: 'KeyT', group: 'App' },
+  { id: 'gimbalMode', label: 'Camera: gimbal Follow / FPV mode', def: 'KeyF', group: 'App' },
   { id: 'hud', label: 'Hide / show the HUD', def: 'KeyH', group: 'App' },
   { id: 'hudDetail', label: 'Detailed telemetry on / off', def: 'KeyI', group: 'App' },
 ];

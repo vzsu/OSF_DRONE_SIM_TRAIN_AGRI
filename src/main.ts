@@ -21,7 +21,8 @@ import { GcsHost, type Telemetry } from './gcs/host';
 import { GcsUI } from './gcs/ui';
 import { LinkHost } from './net/linkHost';
 import { DRONES } from './data/drones';
-import { HOME, setWorld, generateWorld, placeById, WORLD, overCrowd, fenceBreach } from './data/world';
+import { HOME, setWorld, generateWorld, placeById, WORLD, overCrowd, fenceBreach, BOXES } from './data/world';
+import * as THREE from 'three';
 import { defaultPlan } from './sim/mission';
 import { settings, saveSettings, type View } from './settings';
 import { onKey, keyboardArmReset } from './input/input';
@@ -41,6 +42,16 @@ let lastT = 0;
 let lastViewPos = -1;
 let pauseEl: HTMLElement | null = null;
 let slowWarned = false;
+/** camera drones: lock the gimbal on the subject in the centre of the picture (Spotlight / POI) */
+function toggleTrack() {
+  if (engine.drone.fc !== 'dji') { toast('Subject tracking is for camera drones'); return; }
+  const g = world.gimbal;
+  if (g.mode === 'track') { g.mode = 'follow'; g.target = null; engine.yawAssist = null; toast('Tracking off — gimbal Follow'); sound.beep(700, 1, 0.06); return; }
+  const canopy = BOXES.find((b) => b.kind === 'canopy' || b.kind === 'stage');
+  const fallback = canopy ? new THREE.Vector3(canopy.x, 2, -canopy.y) : world.gimbalPos.clone().add(new THREE.Vector3(30, -world.gimbalPos.y, 0));
+  g.lockOnCentre(world.gimbalPos, fallback);
+  toast('Tracking subject — fly with the sticks, the camera stays on it (T to release)'); sound.beep(1500, 2, 0.05);
+}
 let fenceTripped = false;
 const sound = new DroneSound();
 // ---------- lessons + checkride ----------
@@ -77,7 +88,9 @@ const gcsHost = new GcsHost(engine, {
   missionChanged: () => reloadMission(),
   photo: () => { hud.photo(); sound.beep(2600, 1, 0.03); },
   rec: () => { hud.toggleRec(); sound.beep(hud.recording ? 1200 : 800, 1, 0.08); },
-  gimbal: (p) => { if (p !== undefined) world.gimbalPitch = p; return world.gimbalPitch; },
+  gimbal: (p) => { if (p !== undefined) { world.gimbalPitch = p; if (world.gimbal.mode === 'track') { world.gimbal.mode = 'follow'; world.gimbal.target = null; } } return world.gimbalPitch; },
+  gimbalMode: (m) => { if (m === 'track') { if (world.gimbal.mode !== 'track') toggleTrack(); } else { if (world.gimbal.mode === 'track') toggleTrack(); world.gimbal.mode = m; } return world.gimbal.mode; },
+  gimbalState: () => world.gimbal.mode,
   camState: () => hud.camState(),
 });
 let telCache: Telemetry | null = null, telAt = 0;
@@ -367,6 +380,8 @@ onKey((a) => {
   if (a === 'gimbalUp') world.gimbalPitch = Math.min(20, world.gimbalPitch + 5);
   if (a === 'gimbalDown') world.gimbalPitch = Math.max(-90, world.gimbalPitch - 5);
   if (a === 'record') hud.toggleRec();
+  if (a === 'track') toggleTrack();
+  if (a === 'gimbalMode' && engine.drone.fc === 'dji') { const g = world.gimbal; g.mode = g.mode === 'fpv' ? 'follow' : 'fpv'; g.target = null; toast(`Gimbal ${g.mode === 'fpv' ? 'FPV (rolls with the aircraft)' : 'Follow (horizon level)'}`); }
   if (a === 'hud') { hud.toggleHidden(); toast(hud.hidden ? 'HUD hidden — press H to show' : 'HUD shown'); }
   if (a === 'hudDetail') { settings.display.hudDetail = !settings.display.hudDetail; saveSettings(); toast(settings.display.hudDetail ? 'Detailed telemetry on' : 'Detailed telemetry off (I)'); }
 });
@@ -385,8 +400,13 @@ function frame(now: number) {
     // drone-camera picture: needed by phone screens and by the camera-drone ground station
     world.auxCtx = linkHost.viewers > 0 || (gcs.isOpen() && engine.drone.fc === 'dji') ? linkHost.aux.getContext('2d') : null;
     world.update(engine, engine.paused ? 0 : dt);
+    // Spotlight: yaw the aircraft toward the tracked subject (pilot yaw input always wins)
+    if (engine.drone.fc === 'dji' && world.gimbal.mode === 'track' && engine.o('ARMED') > 0.5) {
+      const err = world.gimbal.aircraftYawError(world.drone!.group.quaternion, world.gimbalPos);
+      engine.yawAssist = Math.max(-0.6, Math.min(0.6, -err * 1.4));
+    } else engine.yawAssist = null;
     // camera drones have no pump: the radio's pump/flow knob drives the gimbal pitch instead
-    if (engine.drone.tankCap === 0 && engine.sticks.flow < 0.999) world.gimbalPitch = -90 + engine.sticks.flow * 110;
+    if (engine.drone.tankCap === 0 && engine.sticks.flow < 0.999 && world.gimbal.mode !== 'track') world.gimbalPitch = -90 + engine.sticks.flow * 110;
     // wedding training: never fly over the guests
     hud.overCrowd = overCrowd(engine.o('X'), engine.o('Y'), 2) && engine.o('Z') > 0.5;
     // fly area (geofence): > 3 m outside → return home, like an agri FC fence (action RTL)
