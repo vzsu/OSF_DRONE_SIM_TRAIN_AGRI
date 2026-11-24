@@ -1,0 +1,316 @@
+{
+  "subject": "DGCA RPC Theory",
+  "topic": "Meteorology & Principles of Flight",
+  "concepts": [
+    {
+      "id": "c-avn-meteorology",
+      "name": "Basic Aviation Meteorology",
+      "formula": "\\text{IAS} \\neq \\text{TAS};\\quad \\text{TAS} = \\text{IAS} \\times \\sqrt{\\frac{\\rho_0}{\\rho}}",
+      "explanation": "Key meteorological factors for drone operations: wind direction/speed, temperature, humidity, pressure (altimeter setting), and visibility. Density altitude affects performance — high density altitude reduces lift and motor efficiency. Wind is the single most critical weather factor for multirotor safety. Cloud types (cumulus, stratus, cumulonimbus) and their associated hazards (turbulence, icing, lightning) must be recognized.",
+      "application": "Planning flights around weather windows — avoiding high wind, thermals, and convective activity that can destabilize a drone beyond its control authority.",
+      "reference": {
+        "type": "book",
+        "title": "Drone Rules 2021 & DGCA RPTO Ground School",
+        "author": "Ministry of Civil Aviation, Government of India",
+        "location": "Basic Aviation Meteorology syllabus"
+      }
+    },
+    {
+      "id": "c-principles-flight",
+      "name": "Principles of Flight — Multirotor, Fixed-Wing & Hybrid",
+      "formula": "L = \\tfrac{1}{2}\\rho v^{2} A C_{L}\\quad\\text{(multirotor: thrust = weight at hover)}",
+      "explanation": "Multirotors generate thrust via rotors to counteract weight; fixed-wing aircraft generate lift via airflow over wings and need forward speed; hybrids combine both. Key concepts: lift, drag, thrust, weight (four forces), angle of attack, stall, and the difference between how multirotors and fixed-wings achieve flight. Stability and control differ: multirotors are inherently unstable and rely on FC stabilization; fixed-wings are naturally stable.",
+      "application": "Understanding the fundamental flight physics so a pilot can anticipate how the aircraft will behave in wind, during maneuvers, or when approaching limits.",
+      "reference": {
+        "type": "book",
+        "title": "Principles of Flight — DGCA RPTO Ground Class",
+        "author": "DGCA Authorized Training Organization",
+        "location": "Flight theory chapters"
+      }
+    },
+    {
+      "id": "c-iac-weather-hazards",
+      "name": "Aviation Weather Hazards — Wind, Icing, Turbulence & Convection",
+      "formula": "V_{\\text{max}} = \\text{manufacturer spec};\\quad \\text{ICAO:} \\quad \\text{CAVOK / SYNR / METAR}",
+      "explanation": "Critical weather hazards for drone operations: wind exceeding manufacturer limits (causes loss of control), icing (adds weight, changes aerodynamics, blocks sensors), turbulence (induces structural stress and control errors), convection (thunderstorms, hail, lightning — absolutely prohibited). METAR/SYNR reports provide surface weather; TAF provides forecasts. CAVOK means ceilings and visibility OK.",
+      "application": "Reading aviation weather reports and making go/no-go decisions based on hazard severity versus aircraft capability.",
+      "reference": {
+        "type": "book",
+        "title": "Aviation Weather Hazards — DGCA RPTO Ground Class",
+        "author": "DGCA Authorized Training Organization",
+        "location": "Weather hazards module"
+      }
+    }
+  ],
+  "questions": [
+    {
+      "type": "mcq",
+      "question": "Density altitude increases when which of the following occurs?",
+      "options": [
+        "Temperature increases, pressure decreases, humidity increases",
+        "Temperature decreases, pressure increases",
+        "Altitude decreases and temperature increases",
+        "Pressure increases and humidity decreases"
+      ],
+      "correctIndex": 0,
+      "explanation": "Density altitude increases with higher temperature, lower pressure, and higher humidity — all reduce air density, reducing lift and motor efficiency.",
+      "conceptId": "c-avn-meteorology"
+    },
+    {
+      "type": "mcq",
+      "question": "Which weather factor is the single most critical for multirotor drone safety?",
+      "options": [
+        "Temperature",
+        "Humidity",
+        "Wind",
+        "Cloud cover"
+      ],
+      "correctIndex": 2,
+      "explanation": "Wind is the most critical weather factor for multirotor safety — it directly affects stability, control authority, and endurance.",
+      "conceptId": "c-avn-meteorology"
+    },
+    {
+      "type": "truefalse",
+      "question": "High density altitude improves drone performance because the air is thinner and there is less drag.",
+      "correctAnswer": false,
+      "explanation": "High density altitude REDUCES performance — thinner air means less lift from rotors and less cooling, even though drag is slightly reduced.",
+      "conceptId": "c-avn-meteorology"
+    },
+    {
+      "type": "mcq",
+      "question": "Which cloud type is most hazardous to drone operations due to turbulence, icing, and lightning?",
+      "options": [
+        "Stratus",
+        "Cirrus",
+        "Cumulonimbus",
+        "Nimbostratus"
+      ],
+      "correctIndex": 2,
+      "explanation": "Cumulonimbus clouds produce severe turbulence, icing, hail, and lightning — flying near them is absolutely prohibited.",
+      "conceptId": "c-iac-weather-hazards"
+    },
+    {
+      "type": "short",
+      "question": "What does CAVOK mean in an aviation weather report?",
+      "correctAnswer": "Ceiling and Visibility OK — no significant clouds, visibility ≥ 10 km, no weather phenomena.",
+      "explanation": "CAVOK indicates good weather: no significant clouds below 5000 ft, visibility 10 km or more, no thunderstorm, shower, fog, or sandstorm.",
+      "conceptId": "c-iac-weather-hazards"
+    },
+    {
+      "type": "mcq",
+      "question": "A METAR report indicates 'CB' in the sky condition. What should a drone pilot do?",
+      "options": [
+        "Proceed with caution at higher altitude",
+        "Avoid the area — cumulonimbus clouds indicate thunderstorms",
+        "It is safe — CB clouds are only a visual phenomenon",
+        "Fly only during night"
+      ],
+      "correctIndex": 1,
+      "explanation": "'CB' = Cumulonimbus — thunderstorm cloud. Flying near or in CB clouds is prohibited due to turbulence, icing, lightning, and hail.",
+      "conceptId": "c-iac-weather-hazards"
+    },
+    {
+      "type": "mcq",
+      "question": "What are the four forces acting on a flying aircraft?",
+      "options": [
+        "Thrust, drag, lift, gravity (weight)",
+        "Thrust, drag, lift, pressure",
+        "Lift, weight, friction, torque",
+        "Thrust, drag, buoyancy, gravity"
+      ],
+      "correctIndex": 0,
+      "explanation": "The four forces of flight are thrust, drag, lift, and weight (gravity).",
+      "conceptId": "c-principles-flight"
+    },
+    {
+      "type": "truefalse",
+      "question": "A fixed-wing aircraft requires continuous forward speed to generate lift, unlike a multirotor which generates thrust to counteract weight.",
+      "correctAnswer": true,
+      "explanation": "Fixed-wing aircraft rely on forward airspeed for lift; multirotors use rotor thrust to counteract weight and can hover.",
+      "conceptId": "c-principles-flight"
+    },
+    {
+      "type": "mcq",
+      "question": "In the four forces of flight, which force must a multirotor's rotors directly produce to hover?",
+      "options": [
+        "Lift equal to drag",
+        "Thrust equal to weight",
+        "Thrust equal to lift",
+        "Lift equal to weight plus drag"
+      ],
+      "correctIndex": 1,
+      "explanation": "At hover, a multirotor's total rotor thrust must equal its weight. T/W = 1.0 at hover.",
+      "conceptId": "c-principles-flight"
+    },
+    {
+      "type": "mcq",
+      "question": "Which of the following best describes why multirotors are inherently unstable in flight?",
+      "options": [
+        "They are too heavy",
+        "They have no natural aerodynamic stability and rely on flight controller stabilization",
+        "Their batteries drain too quickly",
+        "Wind affects them more than fixed-wing aircraft"
+      ],
+      "correctIndex": 1,
+      "explanation": "Multirotors have no inherent aerodynamic stability — the flight controller continuously adjusts motor speeds to maintain attitude.",
+      "conceptId": "c-principles-flight"
+    },
+    {
+      "type": "short",
+      "question": "What is the key difference in how a fixed-wing aircraft achieves flight compared to a multirotor?",
+      "correctAnswer": "Fixed-wing aircraft generate lift from airflow over wings and need forward speed; multirotors generate thrust from rotors to counteract weight.",
+      "explanation": "Fixed-wing: aerodynamic lift + forward motion. Multirotor: rotor thrust. This fundamental difference drives their different operational envelopes.",
+      "conceptId": "c-principles-flight"
+    },
+    {
+      "type": "mcq",
+      "question": "A drone operator notices the aircraft is approaching its critical angle of attack. What is the most likely symptom?",
+      "options": [
+        "Smooth, stable flight",
+        "The aircraft pitches up gently",
+        "Flow separation, reduced lift, and potential stall",
+        "The motors spin faster"
+      ],
+      "correctIndex": 2,
+      "explanation": "Approaching critical AoA causes flow separation over the lifting surface, reducing lift and potentially causing a stall.",
+      "conceptId": "c-principles-flight"
+    },
+    {
+      "type": "mcq",
+      "question": "Which of the following best describes the relationship between IAS (Indicated Airspeed) and TAS (True Airspeed) at higher altitudes?",
+      "options": [
+        "IAS > TAS",
+        "IAS < TAS",
+        "IAS = TAS at all altitudes",
+        "They are unrelated"
+      ],
+      "correctIndex": 1,
+      "explanation": "At higher altitudes, true airspeed (TAS) is greater than indicated airspeed (IAS) because the air is less dense.",
+      "conceptId": "c-avn-meteorology"
+    },
+    {
+      "type": "mcq",
+      "question": "A pilot flying at high density altitude will notice that the drone's:",
+      "options": [
+        "Motors produce more thrust",
+        "Lift decreases and response is sluggish",
+        "Battery lasts longer",
+        "GPS accuracy improves"
+      ],
+      "correctIndex": 1,
+      "explanation": "High density altitude means thin air — less lift from rotors, reduced motor efficiency, and sluggish response.",
+      "conceptId": "c-avn-meteorology"
+    },
+    {
+      "type": "truefalse",
+      "question": "Convective activity (thunderstorms) can be flown near as long as the pilot maintains VLOS.",
+      "correctAnswer": false,
+      "explanation": "Flying near thunderstorms is prohibited regardless of VLOS conditions — lightning, hail, turbulence, and icing make it extremely dangerous.",
+      "conceptId": "c-iac-weather-hazards"
+    },
+    {
+      "type": "mcq",
+      "question": "A METAR report shows 'SKC' (sky clear). A pilot should interpret this as:",
+      "options": [
+        "Overcast skies",
+        "No clouds significant for aviation below 5000 ft",
+        "Cumulonimbus present",
+        "Visibility is less than 1 km"
+      ],
+      "correctIndex": 1,
+      "explanation": "SKC = Sky Clear — no clouds significant for aviation below 5000 ft, visibility good.",
+      "conceptId": "c-iac-weather-hazards"
+    },
+    {
+      "type": "mcq",
+      "question": "Icing on a drone's propellers primarily affects flight by:",
+      "options": [
+        "Making the drone lighter",
+        "Changing the aerodynamic properties and adding weight",
+        "Improving efficiency",
+        "Having no effect"
+      ],
+      "correctIndex": 1,
+      "explanation": "Icing changes propeller shape (aerodynamic properties) and adds weight, reducing lift and increasing drag.",
+      "conceptId": "c-iac-weather-hazards"
+    },
+    {
+      "type": "mcq",
+      "question": "A pilot is planning a flight in an area with reported moderate turbulence and gusty winds at their intended altitude. Based on aviation weather hazard principles, the best decision is:",
+      "options": [
+        "Proceed — turbulence only affects fixed-wing aircraft",
+        "Postpone or reroute the flight to avoid the hazard",
+        "Fly faster to 'push through' the turbulence",
+        "Descend to ground level — turbulence doesn't exist there"
+      ],
+      "correctIndex": 1,
+      "explanation": "When weather hazards (turbulence, gusty winds) exceed the aircraft's certified limits or safe operating envelope, the prudent decision is to postpone or reroute.",
+      "conceptId": "c-iac-weather-hazards"
+    },
+    {
+      "type": "mcq",
+      "question": "Which of the following correctly pairs a weather phenomenon with its hazard to drone operations?",
+      "options": [
+        "Icing — reduces weight and improves performance",
+        "Wind — reduces control authority and can cause loss of control",
+        "Low humidity — causes GPS to fail",
+        "Clear skies — always means no turbulence"
+      ],
+      "correctIndex": 1,
+      "explanation": "Wind exceeding manufacturer limits reduces control authority and can cause loss of control. Icing adds weight and degrades aerodynamics.",
+      "conceptId": "c-iac-weather-hazards"
+    },
+    {
+      "type": "mcq",
+      "question": "A drone operator reads in the local weather report that a TAF predicts thunderstorms arriving in 2 hours. The flight is scheduled now. The operator should:",
+      "options": [
+        "Proceed — the weather will be fine now",
+        "Delay or reconsider the flight — thunderstorms are forecast within the operational window",
+        "Fly faster to complete before the storm arrives",
+        "Check only if the storm is directly overhead"
+      ],
+      "correctIndex": 1,
+      "explanation": "TAF provides forecasts. Thunderstorms forecast within the planned flight window mean the operator should delay or reconsider — convective activity is hazardous.",
+      "conceptId": "c-iac-weather-hazards"
+    },
+    {
+      "type": "mcq",
+      "question": "A drone operator is preparing for a flight and checks the weather: clear skies, wind 8 m/s, temperature 35°C, and high humidity. Which factor most directly affects the drone's aerodynamic performance in this scenario?",
+      "options": [
+        "Clear skies",
+        "Wind speed",
+        "High temperature and humidity (reducing air density)",
+        "The drone's color"
+      ],
+      "correctIndex": 2,
+      "explanation": "High temperature and humidity reduce air density, increasing density altitude and reducing rotor lift and motor efficiency.",
+      "conceptId": "c-avn-meteorology"
+    },
+    {
+      "type": "mcq",
+      "question": "A pilot encounters sudden severe turbulence during flight. The correct immediate response is to:",
+      "options": [
+        "Increase speed to 'fly through' the turbulence",
+        "Reduce airspeed to the manufacturer's turbulent-air operating speed and maintain level flight",
+        "Immediately climb above the turbulence layer",
+        "Shut down all motors"
+      ],
+      "correctIndex": 1,
+      "explanation": "In turbulence, reduce to manufacturer's turbulent-air speed and maintain level flight — do not try to fly through at high speed.",
+      "conceptId": "c-iac-weather-hazards"
+    },
+    {
+      "type": "mcq",
+      "question": "Which weather report abbreviation indicates the presence of thunderstorm in the area?",
+      "options": [
+        "SKC",
+        "CAVOK",
+        "TS (in METAR)",
+        "CLR"
+      ],
+      "correctIndex": 2,
+      "explanation": "TS in a METAR indicates thunderstorm present or recent. SKC = sky clear, CAVOK = ceiling and visibility OK, CLR = clear.",
+      "conceptId": "c-iac-weather-hazards"
+    }
+  ]
+}

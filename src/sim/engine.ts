@@ -43,6 +43,8 @@ export class Engine {
   requestArm() { this.armCmdFrames = 6; }
   /** guided point (auto take-off of camera drones): AUTO holds this point/height until cleared */
   guided: { x: number; y: number; z: number } | null = null;
+  /** lesson demo: scripted stick inputs replace the pilot's (the HUD stick monitor shows them) */
+  demoSticks: ((t: number) => Partial<Sticks>) | null = null;
   coverage = new Coverage();
   /** RC reset button (rising edge) → restart on the pad */
   onResetRequest: () => void = () => {};
@@ -101,6 +103,7 @@ export class Engine {
     while (this.queue.length > 1 && now - this.queue[1].t >= delay) this.queue.shift();
     use = this.queue[0].s;
     if (delay <= 0) { use = s; this.queue = [this.queue[this.queue.length - 1]]; }
+    if (this.demoSticks) use = { ...use, ...this.demoSticks(this.o('T')), ok: true };
     this.sticks = use;
     if (use.reset && !this.resetPrev) { this.resetPrev = true; this.onResetRequest(); return; }
     this.resetPrev = use.reset;

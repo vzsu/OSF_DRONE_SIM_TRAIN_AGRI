@@ -5,11 +5,16 @@ import { homeScreen, droneScreen, envScreen, settingsScreen, logsScreen, debrief
 import { missionScreen } from './ui/mission';
 import { realMapScreen } from './ui/realmap';
 import { popIn, popOut, toastIn, toastOut, bindPressFeedback } from './ui/motion';
-import { LessonRunner, lessonById, LESSONS } from './lessons/lessons';
+import { LessonRunner, lessonById, ALL_LESSONS as LESSONS } from './lessons/lessons';
 import { lessonsScreen, LessonCard, showLessonResult, startLesson } from './ui/lessonUI';
 import type { WorldDef } from './data/world';
 import { loginScreen, adminScreen } from './ui/account';
-import { me, logout, currentUser, offline } from './auth/client';
+import { courseScreen, moduleScreen, quizScreen, checklistsScreen, practicalScreen } from './ui/course';
+import { parse, pathFor, crumbsFor, breadcrumbHtml } from './ui/router';
+import { setCrumbs } from './ui/screens';
+import { loadProgress, saveProgress, progress } from './course/progress';
+import { loadLog } from './logs/db';
+import { me, logout, currentUser, offline, isGuest } from './auth/client';
 import { DroneSound } from './audio/sound';
 import { voiceForEvent, speak } from './audio/voice';
 import { GcsHost, type Telemetry } from './gcs/host';
@@ -44,21 +49,26 @@ const lessonCard = new LessonCard(document.getElementById('hud')!);
 let aidsBackup: { trail: boolean; groundMarker: boolean; orientArrow: boolean } | null = null;
 function restoreAids() { if (aidsBackup) { Object.assign(settings.display, aidsBackup); aidsBackup = null; } }
 lessons.onObjectiveDone = (i) => { lessonCard.objectiveDone(i); sound.beep(1760, 2, 0.05); speak('Objective complete', 1500); };
+/** beginner course: the first run of an exercise is a demo flown by the autopilot */
+let demoNext = false;
+function endDemo(skipped: boolean) {
+  engine.demoSticks = null; lessons.demo = false; engine.gcsMode = null;
+  toast(skipped ? 'Demo skipped — your turn!' : 'That is how it is done. Your turn!');
+  speak('Your turn', 0); sound.beep(1320, 2, 0.08);
+  void startFlight();
+}
+(window as unknown as { __skipDemo?: () => void }).__skipDemo = () => { if (lessons.demo) endDemo(true); };
 lessons.onFinish = (r) => {
+  if (lessons.demo) { setTimeout(() => endDemo(false), 1200); return; } // demo results are never saved
   engine.recorder.header.lesson = { ...r, objectives: r.objectives.map((o) => ({ text: o.text, done: o.done })) };
-  if (r.passed) {
-    const b = settings.lessonBest ?? (settings.lessonBest = {});
-    const prev = b[r.id];
-    if (!prev?.passed || r.time < prev.time) b[r.id] = { passed: true, time: r.time, checkride: r.checkride, at: new Date().toISOString() };
-  } else if (!(settings.lessonBest ?? {})[r.id]) (settings.lessonBest ??= {})[r.id] = { passed: false, time: r.time, checkride: r.checkride, at: new Date().toISOString() };
-  saveSettings();
+  void saveProgress({ lessons: { [r.id]: { passed: r.passed, time: r.time, checkride: r.checkride, at: new Date().toISOString() } } });
   speak(r.passed ? 'Lesson passed. Well done' : `Lesson failed. ${r.reason}`, 0);
   sound.beep(r.passed ? 1320 : 400, r.passed ? 3 : 2, 0.1);
   const idx = LESSONS.findIndex((l) => l.id === r.id);
   const next = r.passed && LESSONS[idx + 1] ? LESSONS[idx + 1] : null;
   setTimeout(() => showLessonResult(r, {
     retry: () => void startFlight(), debrief: () => void endFlight(), menu: () => { flying = false; restoreAids(); nav('lessons'); },
-    next: next ? () => { flying = false; startLesson(next, nav); } : null,
+    next: next ? () => { flying = false; demoNext = next.track === 'basic'; startLesson(next, nav); } : null,
   }), r.passed ? 600 : 900);
 };
 // ---------- ground-station tablet (slides up from the bottom; same UI on LAN devices) ----------
@@ -135,10 +145,39 @@ async function applyPlace(): Promise<void> {
   world.rebuildSite(); // no-op unless place, crop or grass changed
 }
 
-function nav(screen: string, arg?: unknown) {
+/** Navigate by URL path (links, back/forward, deep links). */
+function go(path: string, push = true) {
+  const r = parse(path);
+  if (r.screen === 'debrief') {
+    // deep link to a debrief: load the log (the API only returns the student's own logs)
+    void loadLog({ header: { id: r.arg } as FlightLog['header'], summary: {} as FlightLog['summary'], where: 'server' }).then((log) => {
+      if (log) nav('debrief', log, push ? 'push' : 'none'); else nav('logs', undefined, 'replace');
+    });
+    return;
+  }
+  nav(r.screen, r.arg, push ? 'push' : 'none');
+}
+window.addEventListener('popstate', () => go(location.pathname, false));
+document.addEventListener('click', (ev) => {
+  const a = (ev.target as HTMLElement).closest?.('a[data-route]') as HTMLAnchorElement | null;
+  if (!a || ev.ctrlKey || ev.metaKey || ev.shiftKey || ev.button !== 0) return;
+  const url = new URL(a.href, location.origin);
+  if (url.origin !== location.origin) return; // never route to another site
+  ev.preventDefault(); go(url.pathname);
+});
+
+function nav(screen: string, arg?: unknown, history: 'push' | 'replace' | 'none' = 'push') {
   closePause();
+  // URL + breadcrumbs for the screen we are about to show
+  {
+    const id = screen === 'debrief' ? (arg as FlightLog | undefined)?.header?.id : typeof arg === 'string' ? arg : undefined;
+    const p = pathFor(screen === 'freefly' ? 'fly' : screen, id);
+    if (p && history !== 'none' && location.pathname !== p) history === 'replace' ? window.history.replaceState(null, '', p) : window.history.pushState(null, '', p);
+    setCrumbs(breadcrumbHtml(crumbsFor(parse(p ?? location.pathname))));
+  }
   if (screen === 'freefly') { settings.lesson = null; saveSettings(); screen = 'fly'; }
-  if (screen === 'fly') { if (!currentUser && !offline) { loginScreen(nav); return; } void startFlight(); return; }
+  const signedIn = !!currentUser || offline || isGuest();
+  if (screen === 'fly') { if (!signedIn) { loginScreen(nav); return; } void startFlight(); return; }
   if (screen === 'resume' && flying) {
     // back from settings / mission planner opened in the pause menu
     setBack('home', '← Home');
@@ -152,9 +191,9 @@ function nav(screen: string, arg?: unknown) {
   if (keep) { engine.paused = true; setBack('resume', '← Back to flight'); }
   else { flying = false; setBack('home', '← Home'); restoreAids(); }
   hud.show(false);
-  if (screen === 'logout') { void logout().then(() => loginScreen(nav)); return; }
-  // students and instructors must sign in (unless the server is unreachable → local practice)
-  if (!currentUser && !offline) { loginScreen(nav); return; }
+  if (screen === 'logout') { void logout().then(() => { void loadProgress(); window.history.pushState(null, '', '/login'); setCrumbs(''); loginScreen(nav); }); return; }
+  // students and instructors sign in, or use guest mode (unless the server is unreachable → local practice)
+  if (screen === 'login' || !signedIn) { if (location.pathname !== '/login') window.history.replaceState(null, '', '/login'); setCrumbs(''); loginScreen(nav); return; }
   if (screen === 'admin') { if (currentUser?.role === 'admin') void adminScreen(nav); else homeScreen(nav); return; }
   if (screen === 'home') homeScreen(nav);
   else if (screen === 'drone') droneScreen(nav);
@@ -162,9 +201,19 @@ function nav(screen: string, arg?: unknown) {
   else if (screen === 'settings') settingsScreen(nav);
   else if (screen === 'mission') missionScreen(nav);
   else if (screen === 'realmap') realMapScreen(nav);
-  else if (screen === 'lessons') { restoreAids(); lessonsScreen(nav); }
+  else if (screen === 'lessons') { restoreAids(); lessonsScreen(nav, (withDemo) => { demoNext = withDemo; }); }
   else if (screen === 'logs') logsScreen(nav);
   else if (screen === 'debrief') debriefScreen(nav, arg as FlightLog);
+  else if (screen === 'course') courseScreen(nav);
+  else if (screen === 'module' && typeof arg === 'string') moduleScreen(nav, arg);
+  else if (screen === 'quiz' && typeof arg === 'string') quizScreen(nav, arg);
+  else if (screen === 'checklists') checklistsScreen(nav);
+  else if (screen === 'practical') practicalScreen(nav);
+  else if (screen === 'lesson' && typeof arg === 'string') {
+    const l = lessonById(arg);
+    if (l) { demoNext = l.track === 'basic' && !progress.lessons[l.id]; startLesson(l, nav); } else homeScreen(nav);
+  }
+  else homeScreen(nav);
 }
 
 /** Apply an edited mission plan to the running flight (keeps progress if unchanged). */
@@ -190,6 +239,12 @@ async function startFlight() {
   } else restoreAids();
   engine.start(settings.droneId, env);
   lessons.start(lesson, engine, !!settings.checkride);
+  if (lesson?.track === 'basic' && demoNext) {
+    demoNext = false; lessons.demo = true; engine.gcsMode = 2;
+    let lastT = 0;
+    engine.demoSticks = (t) => { const dt = lastT ? Math.max(0, Math.min(0.1, t - lastT)) : 0.016; lastT = t; return lessons.basic ? lessons.basic.demo(engine, dt) : {}; };
+    toast(`DEMO — watch the sticks (bottom left) and the checklist. Press "Skip demo" to fly yourself.`);
+  } else { engine.demoSticks = null; lessons.demo = false; }
   if (lesson) toast(`Lesson ${lesson.n}: ${lesson.title} — ${lesson.brief}`);
   if (!viewsFor().includes(settings.camera.view)) settings.camera.view = 'vlos';
   world.setDrone(engine.drone);
@@ -211,8 +266,11 @@ async function endFlight() {
   flying = false;
   closePause();
   const log = engine.finish();
-  const where = await saveLog(log);
-  toast(where === 'server' ? 'Flight log saved on the training server' : 'Server unreachable — log kept in this browser', where !== 'server');
+  if (isGuest()) toast('Guest mode — this flight is not saved');
+  else {
+    const where = await saveLog(log);
+    toast(where === 'server' ? 'Flight log saved on the training server' : 'Server unreachable — log kept in this browser', where !== 'server');
+  }
   hud.show(false);
   nav('debrief', log);
 }
@@ -373,10 +431,12 @@ async function boot() {
     .then(() => { if (world.envId !== 'procedural') toast('360° environment ready'); })
     .catch((e) => { console.error(e); toast('Could not load 360° environment — using simple sky', true); void world.setEnvironment('procedural', settings.env.timeOfDay); });
   await me();
+  await loadProgress();
   engine.start(settings.droneId, settings.env);
   world.setDrone(engine.drone);
   window.__sim = { engine, world, state: () => (flying ? (engine.paused ? 'paused' : 'flying') : 'menu'), nav };
-  nav('home');
+  (window.__sim as unknown as { go: typeof go }).go = go;
+  go(location.pathname, false); // deep links: /course/…, /lessons/…, /logs/<id>, …
   requestAnimationFrame(frame);
 }
 let booted = false;

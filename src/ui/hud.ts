@@ -79,7 +79,8 @@ export class Hud {
         <div><div class="lbl">LATENCY</div><div id="h-lat">—</div></div>
       </div>
       <div class="box sticks" id="h-sticks">
-        <div class="stick" id="h-stl"><i></i></div><div class="stick" id="h-str"><i></i></div>
+        <div class="stickcol"><div class="stick" id="h-stl"><b class="ax h"></b><b class="ax v"></b><em class="lab t">THR</em><em class="lab r">YAW</em><i></i></div><div class="sval" id="h-stlv"></div></div>
+        <div class="stickcol"><div class="stick" id="h-str"><b class="ax h"></b><b class="ax v"></b><em class="lab t">PITCH</em><em class="lab r">ROLL</em><i></i></div><div class="sval" id="h-strv"></div></div>
       </div>
       <div class="box mini" id="h-minibox"><canvas id="h-mini" width="200" height="220"></canvas><div class="small" id="h-cov"></div></div>
       <div class="box mission" id="h-mission"></div>
@@ -170,10 +171,13 @@ export class Hud {
     const s = e.sticks;
     $('h-sticks').style.display = settings.display.showSticks ? 'flex' : 'none';
     const place = (id: string, x: number, y: number) => {
-      const i = $(id).firstElementChild as HTMLElement; i.style.left = `${50 + x * 45}%`; i.style.top = `${50 - y * 45}%`;
+      const i = $(id).querySelector('i') as HTMLElement; i.style.left = `${50 + x * 45}%`; i.style.top = `${50 - y * 45}%`;
     };
     place('h-stl', s.yaw, s.thr * 2 - 1);
     place('h-str', s.roll, s.pitch);
+    const pct = (v: number) => `${v >= 0 ? '+' : '−'}${Math.abs(Math.round(v * 100)).toString().padStart(3, ' ')}`;
+    $('h-stlv').textContent = `T ${Math.round(s.thr * 100).toString().padStart(3, ' ')}%  Y ${pct(s.yaw)}`;
+    $('h-strv').textContent = `P ${pct(s.pitch)}  R ${pct(s.roll)}`;
     this.missionPanel(e);
     this.drawMini(e, now);
   }

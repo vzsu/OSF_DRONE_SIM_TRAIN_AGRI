@@ -19,7 +19,7 @@ export default function Page() {
   useEffect(() => {
     if (!hasWebGL()) { setNoGl(true); return; }
     let cancelled = false;
-    import('../main').then((m) => { if (!cancelled) m.startApp(); }).catch((e) => { console.error(e); setNoGl(true); });
+    import('../../main').then((m) => { if (!cancelled) m.startApp(); }).catch((e) => { console.error(e); setNoGl(true); });
     return () => { cancelled = true; };
   }, []);
   return (

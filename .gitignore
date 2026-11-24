@@ -5,6 +5,9 @@ certs/
 data/
 next-env.d.ts
 *.tsbuildinfo
-.claude/
+.claude/*
+!.claude/skills/
 .impeccable/
 *.log
+.codegraph/
+.codegraph-wsl/

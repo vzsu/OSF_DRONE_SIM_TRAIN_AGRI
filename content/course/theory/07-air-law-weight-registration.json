@@ -1,0 +1,357 @@
+{
+  "subject": "DGCA RPC Theory",
+  "topic": "Air Law Part 1 — UAS Weight, Digital Sky & RPC",
+  "concepts": [
+    {
+      "id": "c-weight-nano",
+      "name": "UAS Weight Category — Nano",
+      "formula": "W \\leq 250\\text{ g}",
+      "explanation": "A Nano UAS is any unmanned aerial system with maximum all-up weight (including payload) of 250 g or less. Nano drones need no UIN and no Type Certificate, and nobody needs a Remote Pilot Certificate to fly one, whether the flight is commercial or not. Equipment requirements are the lightest of all categories. Airspace zone rules still apply.",
+      "application": "Identifying when a drone qualifies as Nano so the operator knows what permissions and certifications are required — or not required.",
+      "reference": {
+        "type": "book",
+        "title": "Drone Rules 2021 (as amended), Rule 5",
+        "author": "Ministry of Civil Aviation, Government of India",
+        "location": "Rule 5 — UAS classification by weight"
+      }
+    },
+    {
+      "id": "c-weight-micro-small",
+      "name": "UAS Weight Categories — Micro & Small",
+      "formula": "Micro: 250\\text{ g} < W \\leq 2\\text{ kg}\\quad\\text{Small}: 2\\text{ kg} < W \\leq 25\\text{ kg}",
+      "explanation": "Rule 5 classifies by maximum all-up weight: Micro >250 g up to 2 kg, Small >2 kg up to 25 kg, Medium >25 kg up to 150 kg, Large >150 kg. Boundary cases matter: exactly 2 kg is Micro, exactly 25 kg is Small. Drone Rules 2021 sets no altitude or speed limit per weight category. Altitude comes from the airspace map: Green Zone up to 400 ft AGL (200 ft in the 8–12 km airport band). The old '60 m Micro / 120 m Small / 25 m/s' limits belong to the superseded 2018 CAR and are common exam distractors.",
+      "application": "Classifying your drone correctly determines which certificates you need (for example, an RPC for commercial Micro flights). Altitude is then checked against the airspace zone, not the weight category.",
+      "reference": {
+        "type": "book",
+        "title": "Drone Rules 2021 (as amended), Rule 5",
+        "author": "Ministry of Civil Aviation, Government of India",
+        "location": "Rule 5 — UAS classification by weight"
+      }
+    },
+    {
+      "id": "c-weight-medium-large",
+      "name": "UAS Weight Categories — Medium & Large",
+      "formula": "Medium: 25\\text{ kg} < W \\leq 150\\text{ kg}\\quad\\text{Large}: W > 150\\text{ kg}",
+      "explanation": "Medium UAS: >25 kg up to 150 kg max all-up weight. Large UAS: >150 kg max all-up weight. These categories carry progressively stricter requirements including Type Certificate, specialized training, and often additional operational approvals.",
+      "application": "Recognizing when a UAS crosses into Medium/Large territory — critical for compliance and knowing which regulatory tier applies.",
+      "reference": {
+        "type": "book",
+        "title": "Drone Rules 2021 (as amended), Rule 5",
+        "author": "Ministry of Civil Aviation, Government of India",
+        "location": "Rule 5 — UAS classification by weight"
+      }
+    },
+    {
+      "id": "c-digital-sky-reg",
+      "name": "Digital Sky Platform, UIN & Registration",
+      "formula": "UIN \\text{ required} \\iff W > 250\\text{ g (non-exempt)}",
+      "explanation": "The UIN (Unique Identification Number) is issued via the Digital Sky Platform (digitalsky.dgca.gov.in). UIN is mandatory for all UAS except Nano and specified government agencies. Registration on Digital Sky is required before commercial or non-commercial flight (except Nano). Type Certificate is mandatory under Rule 8 except Nano, model RPA, and DGCA-authorized R&D organizations.",
+      "application": "Knowing when to register on Digital Sky and when you need a UIN and/or Type Certificate before operating a drone in India.",
+      "reference": {
+        "type": "book",
+        "title": "Drone Rules 2021 (as amended), Rule 3(l) & Rule 8",
+        "author": "Ministry of Civil Aviation, Government of India",
+        "location": "Digital Sky Platform rules, UIN and TC provisions"
+      }
+    },
+    {
+      "id": "c-rpc-eligibility",
+      "name": "Remote Pilot Certificate (RPC) Eligibility & Validity",
+      "formula": "18 \\leq \\text{Age} \\leq 65,\\quad \\text{RPC valid for } 10\\text{ years}",
+      "explanation": "RPC eligibility under Drone Rules 2021: aged 18–65, class 10th pass or equivalent (no aviation background required), and successful completion of DGCA-specified training at an authorised RPTO. The 2018-era requirement of a medical from a DGCA-authorised examiner is not one of these conditions; an RPTO may still ask for a fitness certificate at admission. RPC is valid for 10 years. Foreign nationals need MHA + MoCA clearance. Maximum penalty under Drone Rules 2021 (as amended) is ₹1,00,000 — the earlier ₹25,000 figure was superseded.",
+      "application": "Determining whether a person qualifies for an RPC and understanding the 10-year validity and renewal path.",
+      "reference": {
+        "type": "book",
+        "title": "Drone Rules 2021 (as amended), RPC provisions",
+        "author": "Ministry of Civil Aviation, Government of India",
+        "location": "Remote Pilot Certificate eligibility and validity rules"
+      }
+    }
+  ],
+  "questions": [
+    {
+      "type": "mcq",
+      "question": "According to Drone Rules 2021 (Rule 5), what is the maximum all-up weight for a Nano UAS?",
+      "options": [
+        "250 g",
+        "500 g",
+        "1 kg",
+        "2 kg"
+      ],
+      "correctIndex": 0,
+      "explanation": "Rule 5 — Nano UAS: maximum all-up weight ≤ 250 g (including payload).",
+      "conceptId": "c-weight-nano"
+    },
+    {
+      "type": "truefalse",
+      "question": "A Nano UAS (≤250 g) requires a Unique Identification Number (UIN) from the Digital Sky Platform.",
+      "correctAnswer": false,
+      "explanation": "Rule 5 — UIN is mandatory for all UAS except Nano and specified government agencies.",
+      "conceptId": "c-digital-sky-reg"
+    },
+    {
+      "type": "mcq",
+      "question": "A drone weighs exactly 2 kg (max all-up weight including payload). Under DGCA Rule 5, it falls in which category?",
+      "options": [
+        "Nano",
+        "Micro",
+        "Small",
+        "Medium"
+      ],
+      "correctIndex": 1,
+      "explanation": "Rule 5 — Micro is >250 g up to 2 kg. Exactly 2 kg falls in Micro, not Small (which starts above 2 kg).",
+      "conceptId": "c-weight-micro-small"
+    },
+    {
+      "type": "mcq",
+      "question": "A drone weighs exactly 25 kg (max all-up weight including payload). Under DGCA Rule 5, it falls in which category?",
+      "options": [
+        "Micro",
+        "Small",
+        "Medium",
+        "Large"
+      ],
+      "correctIndex": 1,
+      "explanation": "Rule 5 — Small is >2 kg up to 25 kg. Exactly 25 kg falls in Small, not Medium (which starts above 25 kg).",
+      "conceptId": "c-weight-micro-small"
+    },
+    {
+      "type": "mcq",
+      "question": "Under Drone Rules 2021, how high may a Micro UAS fly in a Green Zone (outside the 8–12 km airport band) without ATC permission?",
+      "options": [
+        "60 m AGL — the Micro category limit",
+        "400 ft AGL — the Green Zone limit for every weight category",
+        "200 ft AGL",
+        "No limit inside a Green Zone"
+      ],
+      "correctIndex": 1,
+      "explanation": "Drone Rules 2021 has no per-category altitude limit. The airspace map sets it: Green Zone up to 400 ft AGL (200 ft in the 8–12 km airport band). The 60 m figure comes from the superseded 2018 CAR.",
+      "conceptId": "c-weight-micro-small"
+    },
+    {
+      "type": "truefalse",
+      "question": "Drone Rules 2021 sets a separate maximum altitude for each weight category, such as 60 m for Micro and 120 m for Small.",
+      "correctAnswer": false,
+      "explanation": "Those per-category limits came from the superseded 2018 CAR. Under Drone Rules 2021, altitude is governed by the airspace zone (Green Zone up to 400 ft AGL), whatever the weight category.",
+      "conceptId": "c-weight-micro-small"
+    },
+    {
+      "type": "mcq",
+      "question": "What is the maximum penalty under Drone Rules, 2021 (as amended in 2022)?",
+      "options": [
+        "₹25,000",
+        "₹1,00,000",
+        "₹5,00,000",
+        "₹10,00,000"
+      ],
+      "correctIndex": 1,
+      "explanation": "The maximum penalty as amended in 2022 is ₹1,00,000. The older ₹25,000 figure was superseded.",
+      "conceptId": "c-rpc-eligibility"
+    },
+    {
+      "type": "mcq",
+      "question": "What is the minimum education qualification required to apply for a Remote Pilot Certificate (RPC) in India?",
+      "options": [
+        "10th pass",
+        "12th pass",
+        "Graduate degree",
+        "Any education — no requirement"
+      ],
+      "explanation": "The minimum education requirement for RPC eligibility is 10th pass. No aviation background is required.",
+      "conceptId": "c-rpc-eligibility",
+      "correctIndex": 0
+    },
+    {
+      "type": "truefalse",
+      "question": "A foreign national aged 30 who has completed RPTO training can apply for an RPC directly without any additional clearances.",
+      "correctAnswer": false,
+      "explanation": "Foreign nationals need MHA (Ministry of Home Affairs) + MoCA (Ministry of Civil Aviation) clearance in addition to standard RPC requirements.",
+      "conceptId": "c-rpc-eligibility"
+    },
+    {
+      "type": "mcq",
+      "question": "How long is a Remote Pilot Certificate (RPC) valid from the date of issuance?",
+      "options": [
+        "5 years",
+        "10 years",
+        "15 years",
+        "Lifetime"
+      ],
+      "correctIndex": 1,
+      "explanation": "RPC validity is 10 years under DGCA regulations.",
+      "conceptId": "c-rpc-eligibility"
+    },
+    {
+      "type": "mcq",
+      "question": "Which of the following equipment is mandatory on ALL UAS including Nano?",
+      "options": [
+        "Anti-collision light",
+        "RF ID/SIM (NPNT)",
+        "GNSS and flight-data logging flight controller",
+        "ID plate"
+      ],
+      "correctIndex": 2,
+      "explanation": "GNSS, RTH/autonomous flight termination, geo-fencing, and flight controller with flight-data logging are required on ALL UAS including Nano. Anti-collision light, ID plate, and RF ID/SIM are required on all EXCEPT Nano.",
+      "conceptId": "c-digital-sky-reg"
+    },
+    {
+      "type": "truefalse",
+      "question": "Third-party liability insurance is mandatory for all UAS categories including Nano.",
+      "correctAnswer": false,
+      "explanation": "Third-party liability insurance is mandatory for all categories EXCEPT Nano.",
+      "conceptId": "c-digital-sky-reg"
+    },
+    {
+      "type": "mcq",
+      "question": "A drone operator who violates no-fly zone rules near an airport could face a maximum penalty (as amended 2022) of:",
+      "options": [
+        "₹25,000",
+        "₹1,00,000",
+        "₹5,00,000",
+        "₹10,00,000"
+      ],
+      "correctIndex": 1,
+      "explanation": "Maximum penalty under Drone Rules 2021 (as amended, 2022) is ₹1,00,000.",
+      "conceptId": "c-rpc-eligibility"
+    },
+    {
+      "type": "mcq",
+      "question": "Which of the following is NOT exempt from the Type Certificate requirement?",
+      "options": [
+        "Nano UAS",
+        "Model RPA",
+        "R&D organizations with DGCA authorization",
+        "Small UAS used for commercial surveying"
+      ],
+      "correctIndex": 3,
+      "explanation": "Type Certificate (Rule 8) is mandatory except for Nano, model RPA, and R&D organizations with DGCA authorization. Small UAS used commercially need a Type Certificate.",
+      "conceptId": "c-digital-sky-reg"
+    },
+    {
+      "type": "mcq",
+      "question": "On the Digital Sky Platform, what does UIN stand for?",
+      "options": [
+        "Universal Identification Number",
+        "Unique Identification Number",
+        "Unmanned Identification Number",
+        "UAS Instruction Number"
+      ],
+      "correctIndex": 1,
+      "explanation": "UIN = Unique Identification Number, issued via digitalsky.dgca.gov.in.",
+      "conceptId": "c-digital-sky-reg"
+    },
+    {
+      "type": "short",
+      "question": "List the three equipment items that are required on ALL UAS including Nano.",
+      "correctAnswer": "GNSS, Return-to-Home (RTH) / autonomous flight termination, and a flight controller with flight-data logging.",
+      "explanation": "Rule 5 — GNSS, RTH/autonomous flight termination, geo-fencing, and flight-data-logging flight controller are mandatory on ALL UAS including Nano.",
+      "conceptId": "c-digital-sky-reg"
+    },
+    {
+      "type": "short",
+      "question": "Name the two categories of drone weight (besides Nano) that are commonly tested on the DGCA RPC exam.",
+      "correctAnswer": "Micro (>250 g – 2 kg) and Small (>2 kg – 25 kg).",
+      "explanation": "The RPC exam draws heavily on Small Category and boundary cases against Micro and Medium.",
+      "conceptId": "c-weight-micro-small"
+    },
+    {
+      "type": "mcq",
+      "question": "A drone operator is flying in a Yellow Zone without ATC permission. What is the maximum penalty they face under Drone Rules 2021 (as amended)?",
+      "options": [
+        "₹10,000",
+        "₹25,000",
+        "₹1,00,000",
+        "₹5,00,000"
+      ],
+      "correctIndex": 2,
+      "explanation": "The maximum penalty under the amended Drone Rules is ₹1,00,000, regardless of the specific violation.",
+      "conceptId": "c-rpc-eligibility"
+    },
+    {
+      "type": "mcq",
+      "question": "A 150 g drone is being flown for personal recreation (non-commercial). What is required?",
+      "options": [
+        "UIN, Type Certificate, and RPC all required",
+        "No UIN, no Type Certificate, no RPC needed",
+        "Only UIN required",
+        "RPC required but not UIN"
+      ],
+      "correctIndex": 1,
+      "explanation": "Nano (≤250 g) non-commercial operation requires no UIN, no Type Certificate, and no RPC.",
+      "conceptId": "c-weight-nano"
+    },
+    {
+      "type": "mcq",
+      "question": "A drone has a maximum all-up weight of 30 kg. Which Rule 5 category is it?",
+      "options": [
+        "Small",
+        "Medium",
+        "Large",
+        "Micro"
+      ],
+      "correctIndex": 1,
+      "explanation": "Rule 5: Small is >2 kg up to 25 kg, Medium is >25 kg up to 150 kg, Large is >150 kg. A 30 kg drone is Medium.",
+      "conceptId": "c-weight-micro-small"
+    },
+    {
+      "type": "mcq",
+      "question": "Under Drone Rules 2021, which set of conditions makes a person eligible for a Remote Pilot Certificate?",
+      "options": [
+        "Age 18–65, class 10th pass, and DGCA-specified training at an authorised RPTO",
+        "Age 21–60, class 12th pass, and a Class 2 medical",
+        "Age 18–65 and a valid driving licence",
+        "Any age, once an RPTO course is completed"
+      ],
+      "correctIndex": 0,
+      "explanation": "The rules list three conditions: age 18–65, class 10th pass or equivalent, and successful completion of DGCA-specified training at an authorised RPTO. A medical from a DGCA-authorised examiner was a 2018-era requirement and is not one of them.",
+      "conceptId": "c-rpc-eligibility"
+    },
+    {
+      "type": "truefalse",
+      "question": "A drone weighing 300 g is classified as Nano because it is close to 250 g.",
+      "correctAnswer": false,
+      "explanation": "Nano is strictly ≤250 g. A 300 g drone exceeds this and falls in the Micro category (>250 g – 2 kg).",
+      "conceptId": "c-weight-nano"
+    },
+    {
+      "type": "mcq",
+      "question": "The Digital Sky Platform is operated under which authority?",
+      "options": [
+        "Ministry of Defence",
+        "Ministry of Civil Aviation (DGCA)",
+        "Ministry of Home Affairs",
+        "Indian Air Force"
+      ],
+      "correctIndex": 1,
+      "explanation": "The Digital Sky Platform (digitalsky.dgca.gov.in) is operated under the Ministry of Civil Aviation / DGCA.",
+      "conceptId": "c-digital-sky-reg"
+    },
+    {
+      "type": "short",
+      "question": "State the age range requirement for obtaining a Remote Pilot Certificate (RPC) in India.",
+      "correctAnswer": "18 to 65 years.",
+      "explanation": "RPC eligibility requires the applicant to be between 18 and 65 years old.",
+      "conceptId": "c-rpc-eligibility"
+    },
+    {
+      "type": "mcq",
+      "question": "A trainee says: \"A Micro drone must stay below 60 m but a Small drone can go to 120 m.\" Under Drone Rules 2021, what is wrong with this?",
+      "options": [
+        "Nothing — those are the Rule 5 limits",
+        "The numbers are swapped between Micro and Small",
+        "Altitude is set by the airspace zone, not the weight category; both may fly up to 400 ft AGL in a Green Zone",
+        "Micro drones have no altitude limit at all"
+      ],
+      "correctIndex": 2,
+      "explanation": "Per-category altitude limits came from the superseded 2018 CAR. Drone Rules 2021 uses the airspace map: Green Zone up to 400 ft AGL (200 ft in the 8–12 km airport band), Yellow needs ATC permission, Red needs Central Government permission.",
+      "conceptId": "c-weight-micro-small"
+    },
+    {
+      "type": "truefalse",
+      "question": "A Small UAS operator who loses their drone's GNSS system can continue to legally operate without it, as GNSS is only recommended, not mandatory.",
+      "correctAnswer": false,
+      "explanation": "GNSS is mandatory equipment on ALL UAS including Nano. Operating without it violates equipment requirements.",
+      "conceptId": "c-digital-sky-reg"
+    }
+  ]
+}

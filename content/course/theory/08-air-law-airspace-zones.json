@@ -1,0 +1,231 @@
+{
+  "subject": "DGCA RPC Theory",
+  "topic": "Air Law Part 2 — Airspace Zones, No-Fly & NOTAMs",
+  "concepts": [
+    {
+      "id": "c-airspace-green",
+      "name": "Airspace Zones — Green Zone Rules",
+      "formula": "\\text{Green}: 0\\text{–}400\\text{ ft AGL}\\ (\\text{or } 0\\text{–}200\\text{ ft in }8\\text{–}12\\text{ km airport band});\\text{ up to }500\\text{ kg AUW}",
+      "explanation": "Green Zone allows flight without permission. Altitude: 0–400 ft AGL generally; reduced to 0–200 ft AGL in the 8–12 km corridor from an operational airport perimeter. Max AUW: 500 kg. No ATC permission needed. The 2022-amended Drone Rules define these figures — do not use pre-2021 draft numbers.",
+      "application": "Knowing when you can legally fly without any permission — check if you're in a Green Zone and within the altitude/AUW limits.",
+      "reference": {
+        "type": "book",
+        "title": "Drone Rules 2021 (as amended), Rule 3(l)",
+        "author": "Ministry of Civil Aviation, Government of India",
+        "location": "Green Zone definition and limits"
+      }
+    },
+    {
+      "id": "c-airspace-yellow-red",
+      "name": "Airspace Zones — Yellow & Red Zone Rules",
+      "formula": "\\text{Yellow}: >400\\text{ ft in Green};\\ >200\\text{ ft in }8\\text{–}12\\text{ km band};\\ \\text{ground-to-any in }5\\text{–}8\\text{ km band}\\Rightarrow\\text{ATC permission}\\\\\\text{Red}: \\text{No-fly; Central Govt authorization only}",
+      "explanation": "Yellow Zone requires ATC permission (from AAI, IAF, Navy, HAL, etc.): above 400 ft in a Green Zone, above 200 ft in the 8–12 km airport band, and ground-to-any-height in the 5–8 km airport band. Red Zone is a no-drone zone — only Central Government authorization permits flight. The default operation is VLOS; BVLOS needs separate permission/corridor.",
+      "application": "Determining when you need ATC permission before flying — the altitude and distance thresholds from airports are the most commonly tested facts.",
+      "reference": {
+        "type": "book",
+        "title": "Drone Rules 2021 (as amended), Rule 3(l)",
+        "author": "Ministry of Civil Aviation, Government of India",
+        "location": "Yellow Zone and Red Zone definitions"
+      }
+    },
+    {
+      "id": "c-nofly-notam",
+      "name": "No-Fly Zones, NOTAMs & Restricted Areas",
+      "formula": "\\text{No-fly: airports, borders, military, MHA strategic sites}",
+      "explanation": "No-fly zones include areas near airports, international borders, military installations, and strategic/vital locations notified by MHA. NOTAMs (Notices to Airmen) provide temporary restrictions and must be checked before every flight. Third-party liability insurance is mandatory for all UAS except Nano. Anti-collision lights, ID plates, and RF ID/SIM (NPNT) are required on all UAS except Nano.",
+      "application": "Checking NOTAMs and identifying no-fly zones before any flight — flying near airports, borders, or military sites without authorization carries the maximum penalty (₹1,00,000).",
+      "reference": {
+        "type": "book",
+        "title": "Drone Rules 2021 (as amended), No-Fly Zone provisions",
+        "author": "Ministry of Civil Aviation, Government of India",
+        "location": "No-fly zone list and NOTAM requirements"
+      }
+    }
+  ],
+  "questions": [
+    {
+      "type": "mcq",
+      "question": "What is the maximum altitude in the Green Zone within the 8–12 km corridor from an operational airport perimeter?",
+      "options": [
+        "400 ft AGL",
+        "200 ft AGL",
+        "100 ft AGL",
+        "300 ft AGL"
+      ],
+      "correctIndex": 1,
+      "explanation": "In the 8–12 km airport band, Green Zone altitude is reduced to 0–200 ft AGL (not the general 400 ft).",
+      "conceptId": "c-airspace-green"
+    },
+    {
+      "type": "mcq",
+      "question": "In the Green Zone (outside the airport corridor), what is the general maximum altitude allowed without permission?",
+      "options": [
+        "200 ft AGL",
+        "400 ft AGL",
+        "500 ft AGL",
+        "1,000 ft AGL"
+      ],
+      "correctIndex": 1,
+      "explanation": "Green Zone allows 0–400 ft AGL generally (outside the 8–12 km airport band), with no permission needed up to 500 kg AUW.",
+      "conceptId": "c-airspace-green"
+    },
+    {
+      "type": "mcq",
+      "question": "Which zone requires Central Government authorization before any drone flight is permitted?",
+      "options": [
+        "Green Zone",
+        "Yellow Zone",
+        "Red Zone",
+        "ATC-permitted Zone"
+      ],
+      "correctIndex": 2,
+      "explanation": "Red Zone is a no-drone zone — only Central Government authorization permits any flight there.",
+      "conceptId": "c-airspace-yellow-red"
+    },
+    {
+      "type": "mcq",
+      "question": "You are 10 km from an operational airport's perimeter, flying at 150 ft AGL. Which zone are you in and do you need permission?",
+      "options": [
+        "Green Zone — no permission needed",
+        "Yellow Zone — ATC permission needed",
+        "Green Zone — but need ATC permission",
+        "Red Zone — Central Govt authorization needed"
+      ],
+      "correctIndex": 0,
+      "explanation": "At 10 km from airport perimeter (within the 8–12 km band), the Green Zone altitude is 0–200 ft AGL. 150 ft is within this, so no permission needed. At 150 ft in the 8–12 km band you are still in Green Zone.",
+      "conceptId": "c-airspace-green"
+    },
+    {
+      "type": "mcq",
+      "question": "You are 6 km from an operational airport's perimeter and want to fly at any altitude. Which zone applies?",
+      "options": [
+        "Green Zone — fly up to 200 ft freely",
+        "Yellow Zone — ATC permission required (ground-to-any-height in 5–8 km band)",
+        "Red Zone — completely forbidden",
+        "Green Zone — fly freely at any height"
+      ],
+      "correctIndex": 1,
+      "explanation": "In the 5–8 km airport band, the entire airspace (ground-to-any-height) is Yellow Zone requiring ATC permission.",
+      "conceptId": "c-airspace-yellow-red"
+    },
+    {
+      "type": "truefalse",
+      "question": "Above 400 ft AGL in a Green Zone, the airspace becomes Yellow Zone requiring ATC permission.",
+      "correctAnswer": true,
+      "explanation": "Yellow Zone includes the airspace above 400 ft in a Green Zone — ATC permission is required.",
+      "conceptId": "c-airspace-yellow-red"
+    },
+    {
+      "type": "mcq",
+      "question": "The default operation mode for all UAS in India is:",
+      "options": [
+        "BVLOS (Beyond Visual Line of Sight)",
+        "VLOS (Visual Line of Sight)",
+        "Auto-pilot only",
+        "Beyond Beyond Visual Line of Sight (BVLOS)"
+      ],
+      "correctIndex": 1,
+      "explanation": "Default operation is VLOS. BVLOS requires separate permission/corridor from ATC.",
+      "conceptId": "c-nofly-notam"
+    },
+    {
+      "type": "mcq",
+      "question": "Which of the following is NOT a designated no-fly zone under DGCA rules?",
+      "options": [
+        "Near airports",
+        "International borders",
+        "Military installations",
+        "Residential neighborhoods"
+      ],
+      "correctIndex": 3,
+      "explanation": "No-fly zones are near airports, international borders, military installations, and strategic/vital locations notified by MHA. Residential neighborhoods are not automatically no-fly zones.",
+      "conceptId": "c-nofly-notam"
+    },
+    {
+      "type": "truefalse",
+      "question": "NOTAMs (Notices to Airmen) are only relevant for manned aircraft and do not apply to drone operations in India.",
+      "correctAnswer": false,
+      "explanation": "NOTAMs provide temporary flight restrictions that apply to all aircraft including drones. They must be checked before every flight.",
+      "conceptId": "c-nofly-notam"
+    },
+    {
+      "type": "mcq",
+      "question": "An operator wants to fly a 400 g drone at 70 ft AGL, 5 km from an airport perimeter. What is the correct assessment?",
+      "options": [
+        "Legal — it's a Micro in Green Zone below 200 ft",
+        "Illegal — in the 5–8 km band, ground-to-any-height is Yellow Zone requiring ATC permission",
+        "Legal — any drone under 2 kg can fly anywhere",
+        "Illegal — all drones near airports require a Red Zone waiver"
+      ],
+      "correctIndex": 1,
+      "explanation": "5 km from airport perimeter falls in the 5–8 km band where ground-to-any-height is Yellow Zone requiring ATC permission. The 400 g weight makes it Micro, but the location overrides.",
+      "conceptId": "c-airspace-yellow-red"
+    },
+    {
+      "type": "mcq",
+      "question": "Which authority grants ATC permission for drone operations in a Yellow Zone?",
+      "options": [
+        "Only the DGCA",
+        "Only local police",
+        "AAI, IAF, Navy, HAL, or other designated authorities",
+        "The Digital Sky Platform automatically approves"
+      ],
+      "correctIndex": 2,
+      "explanation": "Yellow Zone ATC permission is granted by AAI (Airports Authority of India), IAF, Navy, HAL, or other designated authorities.",
+      "conceptId": "c-airspace-yellow-red"
+    },
+    {
+      "type": "truefalse",
+      "question": "The altitude figures for Green, Yellow, and Red zones in this course reflect the post-2022-amendment Drone Rules, not pre-2021 draft numbers.",
+      "correctAnswer": true,
+      "explanation": "Post-2022-amendment figures are used. Pre-2021 draft notification numbers differ and should not be relied upon.",
+      "conceptId": "c-airspace-green"
+    },
+    {
+      "type": "mcq",
+      "question": "Which of the following best describes the Green Zone maximum all-up weight limit?",
+      "options": [
+        "250 kg",
+        "500 kg",
+        "25 kg",
+        "No weight limit in Green Zone"
+      ],
+      "correctIndex": 1,
+      "explanation": "Green Zone permits flight up to 500 kg AUW without permission (where not designated red/yellow).",
+      "conceptId": "c-airspace-green"
+    },
+    {
+      "type": "short",
+      "question": "What are the three pieces of equipment required on all UAS EXCEPT Nano?",
+      "correctAnswer": "Anti-collision light, ID plate, and RF ID/SIM (NPNT).",
+      "explanation": "Anti-collision light, ID plate, and RF ID/SIM (NPNT) are required on all UAS categories except Nano.",
+      "conceptId": "c-nofly-notam"
+    },
+    {
+      "type": "mcq",
+      "question": "An operator flies a 20 kg drone at 100 m AGL, 15 km from an airport perimeter. Which weight category and airspace zone applies?",
+      "options": [
+        "Small UAS, Green Zone — no permission needed",
+        "Medium UAS, Yellow Zone — permission needed",
+        "Small UAS, Yellow Zone — permission needed",
+        "Micro UAS, Green Zone — no permission needed"
+      ],
+      "correctIndex": 0,
+      "explanation": "20 kg is Small UAS (>2 kg–25 kg). At 15 km from airport perimeter, you are outside the 8–12 km band, so the general Green Zone (0–400 ft ≈ 122 m) applies. 100 m ≈ 328 ft is within 400 ft AGL. No permission needed.",
+      "conceptId": "c-airspace-green"
+    },
+    {
+      "type": "mcq",
+      "question": "Which statement about BVLOS operations is correct under DGCA rules?",
+      "options": [
+        "BVLOS is the default operation mode",
+        "BVLOS requires separate permission/corridor",
+        "BVLOS is prohibited for all categories",
+        "BVLOS is allowed without any permission in Green Zone"
+      ],
+      "correctIndex": 1,
+      "explanation": "Default operation is VLOS. BVLOS requires separate permission/corridor from ATC.",
+      "conceptId": "c-nofly-notam"
+    }
+  ]
+}

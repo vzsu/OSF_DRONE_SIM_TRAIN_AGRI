@@ -71,7 +71,15 @@ await app.prepare();
 const { all: allIps, real: ips } = lanIPv4();
 const tls = loadOrCreateCert(allIps);
 const extra = extraRoutes(() => lanIPv4().real);
-const handler = (req, res) => { if (!extra(req, res)) handle(req, res); };
+// basic hardening for every page and API response
+const SEC_HEADERS = {
+  'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY', 'Referrer-Policy': 'same-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=()', 'Cross-Origin-Opener-Policy': 'same-origin',
+};
+const handler = (req, res) => {
+  for (const [k, v] of Object.entries(SEC_HEADERS)) res.setHeader(k, v);
+  if (!extra(req, res)) handle(req, res);
+};
 http.createServer(handler).listen(HTTP_PORT, HOST);
 https.createServer(tls, handler).listen(HTTPS_PORT, HOST);
 

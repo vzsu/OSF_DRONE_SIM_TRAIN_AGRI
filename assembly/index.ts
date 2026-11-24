@@ -198,6 +198,18 @@ export function reset(): void {
   writeOut();
 }
 
+/** Lesson setup: put the drone in the air at (x,y,z), armed, hovering in mode m (e.g. "fly back and land"). */
+export function spawnAir(x: f64, y: f64, z: f64, m: i32): void {
+  px = x; py = y; pz = z; vx = 0; vy = 0; vz = 0; wx = 0; wy = 0; wz = 0;
+  estX = x; estY = y; estVX = 0; estVY = 0; estVZ = 0; baroErr = 0; altEst = z;
+  armed = true; crashed = false; landed = false; onGround = false; wasOnGround = false; landedTimer = 0; autoDisarmTimer = 0;
+  mode = m; lastReq = m; zTgt = z; posTX = x; posTY = y; velTX = 0; velTY = 0; yawTgt = yawEst;
+  iVx = 0; iVy = 0; iVz = 0; iWx = 0; iWy = 0; iWz = 0; massEst = mass;
+  const hov = Math.sqrt(clamp(mass * G / (<f64>nMot * fmaxEff()), 0, 1));
+  for (let i = 0; i < nMot; i++) unchecked(MOT[i] = hov);
+  writeOut();
+}
+
 function updateMass(): void {
   mass = p(L.P_MASS_EMPTY) + tankL * p(L.P_LIQ_DENS);
   Ixy = mass * sq(p(L.P_RG_XY));

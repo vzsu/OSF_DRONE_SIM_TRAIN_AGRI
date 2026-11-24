@@ -1,0 +1,271 @@
+{
+  "subject": "DGCA RPC Theory",
+  "topic": "RPAS Systems, Batteries, Sensors & Human Factors",
+  "concepts": [
+    {
+      "id": "c-rpas-airframes",
+      "name": "RPAS Airframes, Propulsion, Batteries & Sensors",
+      "formula": "P = F \\cdot v\\quad\\text{and}\\quad I_{\\max} = Q \\cdot C_{\\text{rate}}",
+      "explanation": "RPAS airframe types: quadcopter, hexacopter, octocopter, fixed-wing, VTOL, hybrid. Propulsion: motors (BLDC), ESCs, propellers (CW/CCW pairs). Batteries: LiPo (nominal 3.7 V/cell), S-count determines voltage, C-rating determines discharge. Sensors: IMU (accelerometer + gyroscope), barometer, magnetometer, GPS/GNSS, optical flow. C2 link: the control-and-communication link between ground control station and UAS.",
+      "application": "Selecting and maintaining the correct airframe, propulsion, battery, and sensor suite for the intended mission profile.",
+      "reference": {
+        "type": "book",
+        "title": "RPAS Systems — DGCA RPTO Ground Class",
+        "author": "DGCA Authorized Training Organization",
+        "location": "Airframe and systems modules"
+      }
+    },
+    {
+      "id": "c-human-factors",
+      "name": "Human Factors — Fatigue, Stress & Decision-Making",
+      "formula": "\\text{Risk} = \\text{Probability} \\times \\text{Severity}",
+      "explanation": "Human factors affecting flight safety: fatigue (physical and mental exhaustion reducing reaction time and judgment), stress (affecting situational awareness and decision quality), decision-making biases (confirmation bias, normalization of deviance), and error types (slips, lapses, mistakes, violations). The IMSAFE checklist (Illness, Medication, Stress, Alcohol, Fatigue, Emotion) helps pilots self-assess fitness to fly.",
+      "application": "Self-assessing fitness before flight and recognizing when human factors — not equipment — are the limiting factor.",
+      "reference": {
+        "type": "book",
+        "title": "Human Performance in Aviation — DGCA RPTO Ground Class",
+        "author": "DGCA Authorized Training Organization",
+        "location": "Human factors module"
+      }
+    },
+    {
+      "id": "c-batteries-sensors",
+      "name": "Batteries, Sensors & C2 Link in RPAS",
+      "formula": "V_{\\text{pack}} = n \\times 3.7\\text{ V}\\quad\\text{and}\\quad P_{\\text{link}} = \\text{function of frequency and range}",
+      "explanation": "Battery specifics: LiPo chemistry, voltage sag under load, C-rating practical vs labeled, capacity vs pack size. Sensors in detail: accelerometer (linear acceleration), gyroscope (angular rate), barometer (altitude), magnetometer (heading), GPS/GNSS (position). C2 link: frequencies used (e.g., 900 MHz, 2.4 GHz, 5.8 GHz), range, latency, and encryption considerations. Signal loss and interference sources.",
+      "application": "Understanding battery performance characteristics and sensor data for mission planning and troubleshooting communication/navigation issues.",
+      "reference": {
+        "type": "book",
+        "title": "RPAS Power Systems & Sensors — DGCA RPTO Ground Class",
+        "author": "DGCA Authorized Training Organization",
+        "location": "Power systems and sensors module"
+      }
+    }
+  ],
+  "questions": [
+    {
+      "type": "mcq",
+      "question": "Which sensor on a modern RPAS measures angular velocity (rotation rates)?",
+      "options": [
+        "Accelerometer",
+        "Gyroscope",
+        "Barometer",
+        "Magnetometer"
+      ],
+      "correctIndex": 1,
+      "explanation": "The gyroscope measures angular velocity (rotational rates), which the flight controller uses for attitude stabilization.",
+      "conceptId": "c-rpas-airframes"
+    },
+    {
+      "type": "mcq",
+      "question": "A 4S LiPo battery pack has a nominal voltage of approximately:",
+      "options": [
+        "7.4 V",
+        "11.1 V",
+        "14.8 V",
+        "22.2 V"
+      ],
+      "correctIndex": 2,
+      "explanation": "4S means 4 cells in series. Each LiPo cell is nominally 3.7 V, so 4 × 3.7 = 14.8 V.",
+      "conceptId": "c-batteries-sensors"
+    },
+    {
+      "type": "mcq",
+      "question": "A battery rated 3000 mAh at 20C can sustain a maximum continuous discharge of:",
+      "options": [
+        "3 A",
+        "15 A",
+        "30 A",
+        "60 A"
+      ],
+      "correctIndex": 3,
+      "explanation": "Max discharge = 3 Ah × 20C = 60 A. Note: 20C on a 3000 mAh pack = 3 × 20 = 60 A.",
+      "conceptId": "c-batteries-sensors"
+    },
+    {
+      "type": "mcq",
+      "question": "Which of the following is a function of the magnetometer on a drone?",
+      "options": [
+        "Measure linear acceleration",
+        "Measure altitude",
+        "Determine heading / orientation",
+        "Measure motor RPM"
+      ],
+      "correctIndex": 2,
+      "explanation": "The magnetometer acts as a compass, measuring the Earth's magnetic field to determine heading.",
+      "conceptId": "c-rpas-airframes"
+    },
+    {
+      "type": "short",
+      "question": "Name the three most common types of sensors found in a modern RPAS flight controller besides GPS.",
+      "correctAnswer": "Accelerometer, gyroscope, and magnetometer (or barometer).",
+      "explanation": "IMU (accelerometer + gyroscope) provides attitude data, magnetometer provides heading, barometer provides altitude.",
+      "conceptId": "c-rpas-airframes"
+    },
+    {
+      "type": "mcq",
+      "question": "What does the 'S' count on a LiPo battery represent?",
+      "options": [
+        "The number of cells in parallel",
+        "The number of cells in series",
+        "The discharge rate",
+        "The capacity in amp-hours"
+      ],
+      "correctIndex": 1,
+      "explanation": "'S' = series cells. 4S = 4 cells in series = 14.8 V nominal.",
+      "conceptId": "c-batteries-sensors"
+    },
+    {
+      "type": "mcq",
+      "question": "A 4S LiPo pack reads 16.8 V at rest (no load). What is its approximate state?",
+      "options": [
+        "Fully charged (4.2 V/cell)",
+        "Nearly depleted (4.2 V total across pack)",
+        "Storage charge (3.8 V/cell)",
+        "Faulty — a 4S pack cannot read 16.8 V"
+      ],
+      "correctIndex": 0,
+      "explanation": "4S nominal = 14.8 V (3.7 V/cell); full charge = 16.8 V (4.2 V/cell), measured at rest. Under load the voltage sags, so a full pack reads lower in flight, and storage charge is about 15.2 V (3.8 V/cell).",
+      "conceptId": "c-batteries-sensors"
+    },
+    {
+      "type": "truefalse",
+      "question": "The C2 link (Control and Communication link) between the ground station and the UAS is immune to all forms of interference.",
+      "correctAnswer": false,
+      "explanation": "C2 links operate on specific RF frequencies and can be affected by interference, obstacles, distance, and weather. Signal loss triggers failsafe protocols.",
+      "conceptId": "c-batteries-sensors"
+    },
+    {
+      "type": "mcq",
+      "question": "Which of the following is the primary purpose of a C2 link in RPAS operations?",
+      "options": [
+        "To stream HD video only",
+        "To transmit control commands from GCS to UAS and telemetry back",
+        "To charge the drone wirelessly",
+        "To update the drone's GPS coordinates only"
+      ],
+      "correctIndex": 1,
+      "explanation": "The C2 link carries control commands from the ground control station to the UAS and telemetry data back. It is the essential communication pathway.",
+      "conceptId": "c-batteries-sensors"
+    },
+    {
+      "type": "mcq",
+      "question": "An RPAS pilot using the IMSAFE checklist is assessing which category of factors before flight?",
+      "options": [
+        "Aircraft mechanical condition",
+        "Weather conditions",
+        "Pilot fitness (health, wellness, state of mind)",
+        "Air traffic congestion"
+      ],
+      "correctIndex": 2,
+      "explanation": "IMSAFE = Illness, Medication, Stress, Alcohol, Fatigue, Emotion — it is a self-assessment tool for pilot fitness.",
+      "conceptId": "c-human-factors"
+    },
+    {
+      "type": "truefalse",
+      "question": "Normalization of deviance is a decision-making bias where a pilot gradually accepts increasing risk as 'normal' until a dangerous situation develops.",
+      "correctAnswer": true,
+      "explanation": "Normalization of deviance describes how repeated exposure to risky behavior leads to acceptance of that risk as the new normal.",
+      "conceptId": "c-human-factors"
+    },
+    {
+      "type": "mcq",
+      "question": "Which type of pilot error involves a lapse in memory or attention?",
+      "options": [
+        "Slip",
+        "Lapse",
+        "Mistake",
+        "Violation"
+      ],
+      "correctIndex": 1,
+      "explanation": "A lapse is an error of memory or attention — forgetting a step or missing a cue. A slip is a mechanical execution error; a mistake is a plan error; a violation is a deliberate rule break.",
+      "conceptId": "c-human-factors"
+    },
+    {
+      "type": "short",
+      "question": "What does the IMSAFE acronym stand for in pilot self-assessment?",
+      "correctAnswer": "Illness, Medication, Stress, Alcohol, Fatigue, Emotion.",
+      "explanation": "IMSAFE is a checklist for pilots to evaluate their physical and mental fitness before flying.",
+      "conceptId": "c-human-factors"
+    },
+    {
+      "type": "mcq",
+      "question": "A pilot has been awake for 20 hours before a scheduled flight. Under human factors principles, this most directly affects:",
+      "options": [
+        "The drone's battery life",
+        "Situational awareness and reaction time due to fatigue",
+        "The GPS signal strength",
+        "The motor KV rating"
+      ],
+      "correctIndex": 1,
+      "explanation": "Extended wakefulness causes fatigue that impairs situational awareness, judgment, and reaction time — critical for safe flight operations.",
+      "conceptId": "c-human-factors"
+    },
+    {
+      "type": "mcq",
+      "question": "Which of the following best describes a 'slip' in aviation error taxonomy?",
+      "options": [
+        "A deliberate rule violation",
+        "A mechanical execution error — doing the right thing the wrong way",
+        "A planning error — wrong decision made",
+        "A memory failure"
+      ],
+      "correctIndex": 1,
+      "explanation": "A slip is an execution error — the pilot intended the correct action but executed it incorrectly (e.g., wrong button press).",
+      "conceptId": "c-human-factors"
+    },
+    {
+      "type": "mcq",
+      "question": "An RPAS's barometer sensor is primarily used for:",
+      "options": [
+        "Measuring wind speed",
+        "Determining altitude",
+        "Calculating battery voltage",
+        "Detecting magnetic north"
+      ],
+      "correctIndex": 1,
+      "explanation": "The barometer measures atmospheric pressure to determine altitude, supplementing GPS altitude data.",
+      "conceptId": "c-rpas-airframes"
+    },
+    {
+      "type": "short",
+      "question": "Name three components of a drone's IMU (Inertial Measurement Unit).",
+      "correctAnswer": "Accelerometer, gyroscope, and magnetometer (barometer is also common).",
+      "explanation": "An IMU typically consists of an accelerometer (linear acceleration), gyroscope (angular rate), and magnetometer (heading).",
+      "conceptId": "c-rpas-airframes"
+    },
+    {
+      "type": "mcq",
+      "question": "A pilot is flying in the 5–8 km corridor from an airport perimeter and receives an ATC instruction to climb above 200 ft AGL. What zone are they in and what must they do?",
+      "options": [
+        "Green Zone — climb freely",
+        "Yellow Zone — ATC has already granted permission to be in this zone; comply with the instruction",
+        "Red Zone — land immediately",
+        "ATC cannot give instructions in this zone"
+      ],
+      "correctIndex": 1,
+      "explanation": "The 5–8 km corridor is Yellow Zone (ground-to-any-height), requiring ATC permission. The pilot has already received permission and must comply with ATC instructions.",
+      "conceptId": "c-rpas-airframes"
+    },
+    {
+      "type": "mcq",
+      "question": "A drone's battery voltage sags significantly under load, dropping below the manufacturer's recommended minimum per cell. What is the most likely cause and risk?",
+      "options": [
+        "Normal behavior — no risk",
+        "Insufficient C-rating for the current draw — risk of voltage cutoff, brownout, or fire",
+        "The GPS is draining the battery",
+        "The drone is flying too slow"
+      ],
+      "correctIndex": 1,
+      "explanation": "Voltage sag below recommended minimum indicates the battery's C-rating is insufficient for the current draw, risking brownout, voltage cutoff, or thermal runaway.",
+      "conceptId": "c-batteries-sensors"
+    },
+    {
+      "type": "short",
+      "question": "What is the key difference between a slip and a mistake in aviation error taxonomy?",
+      "correctAnswer": "A slip is an execution error (doing the right thing wrong); a mistake is a planning/decision error (choosing the wrong action).",
+      "explanation": "Slips are execution-level errors; mistakes are plan-level errors where the pilot chose the wrong plan.",
+      "conceptId": "c-human-factors"
+    }
+  ]
+}

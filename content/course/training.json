@@ -1,0 +1,303 @@
+{
+  "version": 1,
+  "checklists": [
+    {
+      "id": "pre",
+      "title": "Pre-flight",
+      "subtitle": "Before arming",
+      "items": [
+        { "id": "P1", "text": "Site & airspace: zone confirmed on Digital Sky airspace map (Green/Yellow/Red); NOTAMs checked", "critical": true },
+        { "id": "P2", "text": "Weather: wind within aircraft limit, no CB/TS in forecast window, visibility OK", "critical": false },
+        { "id": "P3", "text": "Pilot fitness: IMSAFE — Illness, Medication, Stress, Alcohol, Fatigue, Emotion", "critical": false },
+        { "id": "P4", "text": "Frame & arms: no cracks, arms locked, fasteners tight", "critical": false },
+        { "id": "P5", "text": "Propellers: no chips/cracks, correct CW/CCW position, firmly seated", "critical": true },
+        { "id": "P6", "text": "Motors (battery DISCONNECTED): spin each motor by hand — turns freely, no grinding, roughness or play (bearing check)", "critical": true },
+        { "id": "P7", "text": "Battery: no swelling/damage, cells balanced, pack fully charged", "critical": true },
+        { "id": "P8", "text": "Battery connection: hands and body clear of all props; aircraft on flat ground; transmitter ON first, connect battery, step back", "critical": true },
+        { "id": "P9", "text": "GNSS lock (≥10 sats / good HDOP), compass & IMU healthy, home point recorded", "critical": false },
+        { "id": "P10", "text": "Failsafe & RTH altitude set; geofence set; transmitter battery OK", "critical": true },
+        { "id": "P11", "text": "Take-off area clear (5 m radius), people briefed, observer in place", "critical": true }
+      ]
+    },
+    {
+      "id": "in",
+      "title": "In-flight",
+      "subtitle": "While airborne",
+      "items": [
+        { "id": "I1", "text": "Maintain VLOS at all times", "critical": true },
+        { "id": "I2", "text": "Clear call-outs: take-off, altitude, landing", "critical": false },
+        { "id": "I3", "text": "Monitor battery voltage & flight time; land with ≥25–30% reserve", "critical": false },
+        { "id": "I4", "text": "Stay within authorised altitude and geofence", "critical": true },
+        { "id": "I5", "text": "Watch for people, birds, wires, trees; abort if anyone enters the area", "critical": true },
+        { "id": "I6", "text": "React correctly to warnings (low battery, GPS loss, link loss)", "critical": false }
+      ]
+    },
+    {
+      "id": "post",
+      "title": "Post-flight",
+      "subtitle": "After landing",
+      "items": [
+        { "id": "A1", "text": "Land, disarm, wait for props to stop completely before approaching", "critical": true },
+        { "id": "A2", "text": "Disconnect battery before touching the aircraft; then transmitter OFF", "critical": true },
+        { "id": "A3", "text": "Touch-check each motor for abnormal heat (bearing / ESC / prop issue)", "critical": false },
+        { "id": "A4", "text": "Inspect props, arms, landing gear for new damage", "critical": false },
+        { "id": "A5", "text": "Battery temperature & voltage; set to storage voltage if not flying again", "critical": false },
+        { "id": "A6", "text": "Logbook: flight time, battery cycle, observations, snags", "critical": false }
+      ]
+    }
+  ],
+  "blocks": [
+    {
+      "id": "sim",
+      "title": "Simulator",
+      "totalMinutes": 240,
+      "briefingMinutes": 20,
+      "briefing": "Simulator orientation: transmitter modes (Mode 2), stick functions (throttle, yaw, pitch, roll), flight modes (Angle/ATTI/GPS), and a full walkthrough of the pre-, in- and post-flight checklists.",
+      "exercises": [
+        {
+          "id": "S1", "title": "Arm / Disarm", "minutes": 10,
+          "objective": "Correct arming sequence with throttle fully down; disarm only on the ground.",
+          "steps": ["Area clear call-out", "Throttle fully down", "Arm (stick command or switch) — confirm motors idle", "Hold 5 s at idle, hands steady", "Disarm — confirm motors stopped", "Repeat 3 times"],
+          "caution": "Never disarm in the air. Never arm with throttle raised.",
+          "criteria": [
+            { "id": "c1", "label": "Area-clear call-out before arming", "points": 20 },
+            { "id": "c2", "label": "Throttle fully down before arm", "points": 25 },
+            { "id": "c3", "label": "Correct arm command, first attempt", "points": 20 },
+            { "id": "c4", "label": "Correct disarm, motors fully stopped", "points": 20 },
+            { "id": "c5", "label": "Consistent across 3 repetitions", "points": 15 }
+          ]
+        },
+        {
+          "id": "S2", "title": "Take-off & Landing", "minutes": 20,
+          "objective": "Vertical climb to 2 m, 5 s hover, vertical descent, soft touchdown — with NO yaw.",
+          "steps": ["Arm", "Smooth throttle-up to 2 m", "Hover 5 s inside 1 m box", "Vertical descent", "Soft touchdown", "Disarm immediately"],
+          "caution": "No yaw during take-off and landing — keep the nose pointing the same way the whole time.",
+          "criteria": [
+            { "id": "c1", "label": "Area-clear call-out and arming sequence", "points": 10 },
+            { "id": "c2", "label": "Smooth vertical climb to 2 m", "points": 20 },
+            { "id": "c3", "label": "No yaw drift (heading change < 15°)", "points": 25 },
+            { "id": "c4", "label": "Stable 5 s hover within 1 m box", "points": 15 },
+            { "id": "c5", "label": "Controlled vertical descent", "points": 15 },
+            { "id": "c6", "label": "Soft touchdown and immediate disarm", "points": 15 }
+          ]
+        },
+        {
+          "id": "S3", "title": "Hover & Orientation Hold", "minutes": 25,
+          "objective": "Hold position 10 s in each orientation: tail-in, left side-in, right side-in, nose-in.",
+          "steps": ["Take off to 3 m tail-in", "Hold 10 s", "Yaw 90° → left side-in, hold 10 s", "Yaw 90° → nose-in, hold 10 s", "Yaw 90° → right side-in, hold 10 s", "Return tail-in and land"],
+          "caution": "In nose-in, roll and pitch feel reversed — make small, slow corrections.",
+          "criteria": [
+            { "id": "c1", "label": "Tail-in hold within 1 m box", "points": 20 },
+            { "id": "c2", "label": "Side-in holds (left & right)", "points": 25 },
+            { "id": "c3", "label": "Nose-in hold within 1.5 m box", "points": 30 },
+            { "id": "c4", "label": "Altitude held ±0.5 m throughout", "points": 15 },
+            { "id": "c5", "label": "Smooth yaw transitions", "points": 10 }
+          ]
+        },
+        {
+          "id": "S4", "title": "Square — Right & Left", "minutes": 25,
+          "objective": "Fly a 10 m square clockwise (right) then anticlockwise (left) at constant height with crisp corners.",
+          "steps": ["Take off to 3 m", "Fly 10 m forward, stop", "Turn right / translate right, 10 m, stop", "Complete square clockwise", "Repeat anticlockwise (left)", "Land at start point"],
+          "caution": "Come to a full stop at every corner before the next leg.",
+          "criteria": [
+            { "id": "c1", "label": "Straight legs, no drift", "points": 25 },
+            { "id": "c2", "label": "Full stop at each corner", "points": 20 },
+            { "id": "c3", "label": "Constant height ±0.5 m", "points": 20 },
+            { "id": "c4", "label": "Right (CW) square complete", "points": 15 },
+            { "id": "c5", "label": "Left (CCW) square complete", "points": 20 }
+          ]
+        },
+        {
+          "id": "S5", "title": "Circle — Clockwise & Anticlockwise", "minutes": 25,
+          "objective": "10 m-diameter circle in both directions with coordinated yaw, constant height and radius.",
+          "steps": ["Take off to 3 m", "Enter circle clockwise, nose following the path", "Complete 2 laps", "Reverse: 2 laps anticlockwise", "Exit and land"],
+          "caution": "Keep the radius constant; do not lose altitude in the turn.",
+          "criteria": [
+            { "id": "c1", "label": "Constant radius", "points": 25 },
+            { "id": "c2", "label": "Coordinated yaw (nose follows path)", "points": 25 },
+            { "id": "c3", "label": "Constant height ±0.5 m", "points": 20 },
+            { "id": "c4", "label": "Clockwise laps clean", "points": 15 },
+            { "id": "c5", "label": "Anticlockwise laps clean", "points": 15 }
+          ]
+        },
+        {
+          "id": "S6", "title": "Figure-8 (Infinity)", "minutes": 30,
+          "objective": "Two linked circles with a smooth crossover at the centre; both loops equal size.",
+          "steps": ["Take off to 3 m at the centre point", "Fly the right loop clockwise", "Cross the centre", "Fly the left loop anticlockwise", "Complete 3 full figure-8s", "Land at centre"],
+          "caution": "Plan the crossover in advance and keep speed low.",
+          "criteria": [
+            { "id": "c1", "label": "Both loops similar size", "points": 25 },
+            { "id": "c2", "label": "Smooth crossover at centre", "points": 25 },
+            { "id": "c3", "label": "Coordinated yaw through direction change", "points": 20 },
+            { "id": "c4", "label": "Constant height ±0.5 m", "points": 15 },
+            { "id": "c5", "label": "3 consecutive figure-8s", "points": 15 }
+          ]
+        },
+        {
+          "id": "S7", "title": "Spiral Up", "minutes": 20,
+          "objective": "Climbing circle: 3 turns from 2 m to 10 m with constant radius and climb rate.",
+          "steps": ["Hover at 2 m", "Begin circle and steady climb", "3 turns, reaching 10 m on the last", "Stop and hover at 10 m", "Descend vertically and land"],
+          "caution": "Watch the altitude ceiling and geofence.",
+          "criteria": [
+            { "id": "c1", "label": "Constant radius while climbing", "points": 30 },
+            { "id": "c2", "label": "Steady climb rate (no steps)", "points": 30 },
+            { "id": "c3", "label": "Reached target height on turn 3", "points": 20 },
+            { "id": "c4", "label": "Stable hover at top", "points": 20 }
+          ]
+        },
+        {
+          "id": "S8", "title": "Spiral Down", "minutes": 20,
+          "objective": "Descending circle: 3 turns from 10 m to 2 m with a controlled descent rate.",
+          "steps": ["Climb vertically to 10 m", "Begin circle and steady descent", "3 turns, reaching 2 m on the last", "Hover at 2 m", "Land"],
+          "caution": "Avoid fast vertical descent into your own downwash (vortex ring state).",
+          "criteria": [
+            { "id": "c1", "label": "Constant radius while descending", "points": 30 },
+            { "id": "c2", "label": "Controlled descent rate (< 1.5 m/s)", "points": 30 },
+            { "id": "c3", "label": "Reached 2 m on turn 3", "points": 20 },
+            { "id": "c4", "label": "Stable hover and soft landing", "points": 20 }
+          ]
+        },
+        {
+          "id": "S9", "title": "Precision Spot Landing", "minutes": 20,
+          "objective": "Land inside a 1 m circle from 5 m away and 5 m up — three times.",
+          "steps": ["Hover 5 m up, 5 m from pad", "Approach and stop above pad", "Descend with fine corrections", "Touch down inside circle", "Repeat ×3"],
+          "caution": "Make only fine corrections in the last metre.",
+          "criteria": [
+            { "id": "c1", "label": "Landing 1 inside circle", "points": 25 },
+            { "id": "c2", "label": "Landing 2 inside circle", "points": 25 },
+            { "id": "c3", "label": "Landing 3 inside circle", "points": 25 },
+            { "id": "c4", "label": "Soft touchdowns, no bounce", "points": 25 }
+          ]
+        },
+        {
+          "id": "S10", "title": "Emergency Handling", "minutes": 25,
+          "objective": "Handle simulated link loss (RTH), GPS loss (ATTI manual hold) and low-battery forced landing.",
+          "steps": ["Instructor triggers link loss → confirm RTH engages", "Regain link, take manual control", "Instructor disables GPS → hold position in ATTI", "Low-battery warning → choose safe spot, land"],
+          "caution": "Take control smoothly — no panic inputs.",
+          "criteria": [
+            { "id": "c1", "label": "Recognised link loss, RTH behaviour correct", "points": 25 },
+            { "id": "c2", "label": "Smooth manual takeover", "points": 25 },
+            { "id": "c3", "label": "Held position in ATTI (no GPS)", "points": 25 },
+            { "id": "c4", "label": "Safe forced landing on low battery", "points": 25 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "field",
+      "title": "On-field",
+      "totalMinutes": 240,
+      "briefingMinutes": 0,
+      "briefing": "Real aircraft at the agricultural farm — the spraying drone with the tank empty / payload removed. Every flight starts with the full pre-flight checklist.",
+      "exercises": [
+        {
+          "id": "F1", "title": "Site Survey & Risk Assessment", "minutes": 20,
+          "objective": "Walk the field boundary, mark obstacles, confirm zone and NOTAMs, check wind.",
+          "steps": ["Walk the boundary", "Mark trees, wires, sheds, people, animals", "Confirm zone on Digital Sky airspace map", "Check NOTAMs and wind", "Choose take-off / landing / emergency spots"],
+          "caution": "Power lines are invisible from the air — find them on the ground first.",
+          "criteria": [
+            { "id": "c1", "label": "Complete obstacle identification", "points": 30 },
+            { "id": "c2", "label": "Correct zone & NOTAM check", "points": 25 },
+            { "id": "c3", "label": "Wind/weather go/no-go decision", "points": 20 },
+            { "id": "c4", "label": "Sensible take-off, landing & emergency spots", "points": 25 }
+          ]
+        },
+        {
+          "id": "F2", "title": "Pre-flight on Real Aircraft", "minutes": 25,
+          "objective": "Run the full pre-flight checklist (P1–P11) on the real drone.",
+          "steps": ["Frame & props inspection", "Motor hand-spin bearing check (battery disconnected)", "Battery inspection", "Transmitter ON → connect battery with full stand-off", "GNSS lock & home point", "Failsafe/RTH check"],
+          "caution": "Keep hands and body clear of all propellers whenever the battery is connected.",
+          "criteria": [
+            { "id": "c1", "label": "Motor bearing hand-check done correctly", "points": 20 },
+            { "id": "c2", "label": "Battery connect with safe stand-off", "points": 25 },
+            { "id": "c3", "label": "Props & frame inspection", "points": 20 },
+            { "id": "c4", "label": "GNSS / compass / home point verified", "points": 15 },
+            { "id": "c5", "label": "Failsafe & RTH verified", "points": 20 }
+          ]
+        },
+        {
+          "id": "F3", "title": "Arm, Take-off, Hover, Land", "minutes": 30,
+          "objective": "Real-aircraft take-off to 3 m, stable hover, soft landing — no yaw.",
+          "steps": ["Arm with throttle down", "Climb to 3 m", "Hover 10 s", "Descend and land", "Disarm, wait for props to stop"],
+          "caution": "Heavier aircraft respond slower than the sim — anticipate.",
+          "criteria": [
+            { "id": "c1", "label": "Correct arming / disarming", "points": 15 },
+            { "id": "c2", "label": "Smooth climb, no yaw", "points": 25 },
+            { "id": "c3", "label": "Stable 10 s hover", "points": 25 },
+            { "id": "c4", "label": "Soft landing", "points": 20 },
+            { "id": "c5", "label": "Waited for props to stop before approach", "points": 15 }
+          ]
+        },
+        {
+          "id": "F4", "title": "Square & Circle", "minutes": 35,
+          "objective": "15 m square and 15 m circle at 5 m AGL, both directions.",
+          "steps": ["Square clockwise", "Square anticlockwise", "Circle clockwise", "Circle anticlockwise"],
+          "caution": "Account for wind drift on each leg.",
+          "criteria": [
+            { "id": "c1", "label": "Square CW", "points": 25 },
+            { "id": "c2", "label": "Square CCW", "points": 25 },
+            { "id": "c3", "label": "Circle CW", "points": 25 },
+            { "id": "c4", "label": "Circle CCW", "points": 25 }
+          ]
+        },
+        {
+          "id": "F5", "title": "Figure-8 & Nose-in", "minutes": 30,
+          "objective": "Figure-8 at 5 m AGL and a 10 s nose-in hover.",
+          "steps": ["Two figure-8s", "Return to centre", "Yaw to nose-in", "Hold 10 s", "Land"],
+          "caution": "Nose-in on a real aircraft: slow inputs only.",
+          "criteria": [
+            { "id": "c1", "label": "Figure-8 shape & crossover", "points": 40 },
+            { "id": "c2", "label": "Height held", "points": 20 },
+            { "id": "c3", "label": "Nose-in hover 10 s", "points": 40 }
+          ]
+        },
+        {
+          "id": "F6", "title": "Agri A-B Line Spray Pattern (no payload)", "minutes": 45,
+          "objective": "Lawnmower pattern over the plot at 2–3 m AGL, 4–5 m swath spacing, clean headland turns, constant speed.",
+          "steps": ["Set A and B points along the long edge", "Fly A→B at constant speed and height", "Headland turn, shift one swath (4–5 m)", "Fly B→A parallel", "Cover the whole plot", "Return and land"],
+          "caution": "Low altitude over crops — watch for poles, wires and people in the field.",
+          "criteria": [
+            { "id": "c1", "label": "Parallel lines, consistent swath spacing", "points": 25 },
+            { "id": "c2", "label": "Constant height 2–3 m AGL", "points": 25 },
+            { "id": "c3", "label": "Clean headland turns", "points": 20 },
+            { "id": "c4", "label": "Constant ground speed", "points": 15 },
+            { "id": "c5", "label": "Full plot coverage", "points": 15 }
+          ]
+        },
+        {
+          "id": "F7", "title": "Battery Swap & Resume", "minutes": 15,
+          "objective": "Land at the swap point, safe battery change, resume the pattern from the break point.",
+          "steps": ["Land at swap point", "Disarm, wait for props to stop", "Disconnect, swap battery", "Reconnect with stand-off", "Resume from break point"],
+          "caution": "Same stand-off rules apply on every battery swap.",
+          "criteria": [
+            { "id": "c1", "label": "Safe disarm & wait", "points": 30 },
+            { "id": "c2", "label": "Safe battery swap with stand-off", "points": 40 },
+            { "id": "c3", "label": "Resumed from correct point", "points": 30 }
+          ]
+        },
+        {
+          "id": "F8", "title": "Emergency Drill", "minutes": 25,
+          "objective": "Instructor triggers RTH / link-loss; student takes manual control and lands safely.",
+          "steps": ["Instructor triggers RTH", "Student monitors path and height", "Cancel RTH, take manual control", "Land at the emergency spot"],
+          "caution": "Know your emergency landing spot before every flight.",
+          "criteria": [
+            { "id": "c1", "label": "Correct read of RTH behaviour", "points": 30 },
+            { "id": "c2", "label": "Smooth manual takeover", "points": 35 },
+            { "id": "c3", "label": "Safe landing at emergency spot", "points": 35 }
+          ]
+        },
+        {
+          "id": "F9", "title": "Post-flight & Logbook", "minutes": 15,
+          "objective": "Post-flight checklist A1–A6 and a complete logbook entry.",
+          "steps": ["Disarm and wait", "Disconnect battery", "Motor heat touch-check", "Inspect props & frame", "Battery to storage", "Logbook entry"],
+          "caution": "Hot motors after a short flight point to a fault — log it.",
+          "criteria": [
+            { "id": "c1", "label": "Safe shutdown sequence", "points": 30 },
+            { "id": "c2", "label": "Motor heat & airframe inspection", "points": 30 },
+            { "id": "c3", "label": "Complete logbook entry", "points": 40 }
+          ]
+        }
+      ]
+    }
+  ]
+}

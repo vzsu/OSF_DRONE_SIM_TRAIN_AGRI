@@ -7,7 +7,7 @@ import { CROPS, GRASSES } from '../data/crops';
 import { KEY_ACTIONS, keyOf, keyLabel, bindKey, resetKeys } from '../input/keys';
 import { setCaptureKey } from '../input/input';
 import { enterScreen, popIn, countUp, growBars } from './motion';
-import { currentUser, offline } from '../auth/client';
+import { currentUser, offline, isGuest } from '../auth/client';
 import { settings, saveSettings, profileFor, defaultProfile, exportJson, downloadBlob, STICK_FUNCS, SWITCH_FUNCS, type Func, type Src, type ControllerProfile } from '../settings';
 import { listPads, activePad, KEYBOARD_ID, normStick, normThrottle, readSrc, readSticks, type RawPad, type Sticks } from '../input/input';
 import { listLogs, deleteLog, loadLog } from '../logs/db';
@@ -22,6 +22,9 @@ function loop(fn: () => void) { stopLoop(); const f = () => { fn(); raf = reques
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 
 let back = { target: 'home', label: '← Home' };
+let crumbs = '';
+/** Breadcrumb trail (HTML) shown above every screen title. */
+export function setCrumbs(html: string) { crumbs = html; }
 /** Where the screen header's back button goes (home, or back to a paused flight). */
 export function setBack(target: string, label: string) { back = { target, label }; }
 export const backTarget = () => back.target;
@@ -33,7 +36,7 @@ export function mount(html: string): HTMLElement {
   enterScreen(el);
   return el;
 }
-export const header = (title: string) => `<div class="row spread" style="margin-bottom:16px"><h1>${title}</h1><button data-nav="${back.target}">${back.label}</button></div>`;
+export const header = (title: string) => `${crumbs}<div class="row spread" style="margin-bottom:16px"><h1>${title}</h1><button data-nav="${back.target}">${back.label}</button></div>`;
 export function wireNav(root: HTMLElement, nav: Nav) {
   root.querySelectorAll<HTMLElement>('[data-nav]').forEach((b) => b.addEventListener('click', () => nav(b.dataset.nav!)));
 }
@@ -51,18 +54,19 @@ export function homeScreen(nav: Nav) {
       <div class="menu">
         <button class="primary" data-nav="freefly">▶ Fly — ${esc(d.name)}</button>
         <button data-nav="drone">Select drone</button>
-        <button data-nav="lessons">Lessons &amp; checkride</button>
+        <button data-nav="course">Course — theory &amp; checklists</button>
+        <button data-nav="lessons">Simulator lessons (beginner 1–10)</button>
         <button data-nav="realmap">Real map — Chhattisgarh</button>
         <button data-nav="mission">Mission planner (AUTO spray)</button>
         <button data-nav="env">Environment &amp; weather</button>
         <button data-nav="settings">Settings &amp; controller calibration</button>
         <button data-nav="logs">Flight logs</button>
         ${currentUser?.role === 'admin' ? '<button data-nav="admin">Admin panel (students)</button>' : ''}
-        ${currentUser ? '<button data-nav="logout">Sign out</button>' : ''}
+        ${currentUser ? '<button data-nav="logout">Sign out</button>' : isGuest() ? '<button data-nav="logout">Leave guest mode</button>' : ''}
       </div>
       <div class="card" style="min-width:280px;max-width:420px">
         <h3>Session</h3>
-        ${currentUser ? `<div class="kv" style="margin-bottom:8px"><span>Signed in</span><span><b>${esc(currentUser.name)}</b> (${currentUser.role === 'admin' ? 'instructor' : 'student'})</span></div>` : `<p class="small bad">${offline ? 'Training server unreachable — practising locally, logs stay in this browser.' : ''}</p><div class="field"><label>Trainee name</label><input id="trainee" value="${esc(settings.trainee)}" placeholder="Name for flight logs"></div>`}
+        ${isGuest() ? '<p class="guest-note">Guest mode — everything works, but nothing is saved (no flight logs, no scores).</p>' : ''}${currentUser ? `<div class="kv" style="margin-bottom:8px"><span>Signed in</span><span><b>${esc(currentUser.name)}</b> (${currentUser.role === 'admin' ? 'instructor' : 'student'})</span></div>` : `<p class="small bad">${offline ? 'Training server unreachable — practising locally, logs stay in this browser.' : ''}</p><div class="field"><label>Trainee name</label><input id="trainee" value="${esc(settings.trainee)}" placeholder="Name for flight logs"></div>`}
         <div class="kv">
           <span>Drone</span><span>${esc(d.name)}</span>
           <span>Controller</span><span id="ctl">${pad ? esc(pad.id) : 'Keyboard (no RC detected)'}</span>

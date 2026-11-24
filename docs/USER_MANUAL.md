@@ -234,6 +234,49 @@ All sources are free and need no API key: Esri World Imagery, OpenStreetMap, Ove
 
 Go to **Settings → Keyboard shortcuts**, click an action and press the new key. A key already used by another action is swapped onto that action. *Reset to defaults* restores the original keys. RC sticks, switches and buttons are mapped in **Settings → Controller (RC)**.
 
+## 10a. Course, beginner exercises, accounts and URLs
+
+**Sign in or guest mode.** The first screen offers *Sign in* and, below it, **Continue in guest mode**. A guest can use every screen, the course and the simulator, but **nothing is saved**: no flight logs, quiz scores or exercise results. Guest mode lasts until the browser tab is closed.
+
+**Course** (Home → *Course — theory & checklists*, URL `/course`)
+- **5 DGCA RPC theory modules:**
+  1. Air Law Part 1
+  2. Air Law Part 2
+  3. Meteorology
+  4. RPAS Systems & Human Factors
+  5. Flight Planning & Emergencies
+
+  Each has concepts with properly typeset formulas, "In practice" notes, a *Mark as read* button and short-answer self-check cards.
+- **Quiz per module:** 10 random questions from 106 MCQ and true/false questions. Each answer shows an explanation; the pass mark is **70%**. Your best and latest scores are saved to your account.
+- **Flight checklists:** pre-flight (11 items), in-flight (6) and post-flight (6). Critical items are red. Completing a checklist is recorded.
+- **Practical training plan:** the simulator syllabus (S1–S10) and the on-field syllabus (F1–F9), with steps and marking criteria. Each simulator item links straight to the matching sim exercise.
+
+**Beginner exercises 1–10** (Home → *Simulator lessons*, URL `/lessons`)
+
+| # | Exercise |
+|---|---|
+| 1 | Take-off and landing |
+| 2 | In-flight control check (very small yaw / pitch / roll — each must answer) |
+| 3 | Pitch forward and back to the same place |
+| 4 | Roll right and back, roll left and back |
+| 5 | Square (forward → right → back → left, through gates) |
+| 6 | Right circle (slight pitch forward + slight yaw right) |
+| 7 | Left circle |
+| 8 | Figure 8 |
+| 9 | Spiral climb (pitch + yaw + a little throttle) |
+| 10 | Bring it home (the drone starts in the air; land it on the pad) |
+
+- **Demo first:** each exercise is first flown by the autopilot (*▶ Watch demo, then fly*). Watch the **stick monitor** (bottom left): it has centre axes, a 25% grid and live numbers (T/Y, P/R). The checklist fills as the demo flies. Then it says **"Your turn"** and you fly the same exercise. *Skip demo* jumps straight to your turn. *Fly now* skips the demo entirely.
+- Every finished step plays a short tick, fills its progress bar and ticks the checklist. Results are saved to the student's account.
+
+**Admin panel** shows each student's flights, scores, **theory quizzes (passed / average)** and **sim exercises passed**.
+
+**Real URLs and breadcrumbs.**
+- Every screen has its own address, for example `/course/08-air-law-airspace-zones/quiz`, `/lessons/b5`, `/logs/<flight id>` and `/admin`.
+- Addresses can be bookmarked and shared, and the browser Back/Forward buttons work.
+- A breadcrumb trail (Home › Course › Module › Quiz) sits above every title.
+- Unknown or tampered addresses go to Home. The server checks login and admin rights on every request.
+
 ## 10b. Lessons and checkride
 
 Open **Home → Lessons & checkride**. There are 8 lessons:

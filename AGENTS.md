@@ -48,6 +48,11 @@ On Windows the user starts everything with `start-sim.cmd` (wraps `start-sim.ps1
 | `server-live.mjs` | Plain-Node routes before Next: `/live/*` phone-screen relay (SSE telemetry/commands + MJPEG camera, QR token), `/tiles/{sat,osm}` tile proxy + disk cache (z≥9 only inside Chhattisgarh), `/geo/search` (Nominatim) and `/geo/osm` (Overpass) proxy + cache |
 | `src/net/linkHost.ts`, `src/remote/remote.ts`, `src/app/remote/page.tsx` | Phone/tablet screen. **No WebRTC** (failed on phone hotspots: mDNS `.local` candidates, Public network). Sim POSTs telemetry 10 Hz + JPEG frames ~12 fps; phone gets SSE + `<img>` MJPEG |
 | `src/maps/osm.ts`, `src/ui/realmap.ts`, `src/server/mapStore.ts`, `api/maps` | Real-map grounds: Leaflet picker, OSM → `WorldDef` (buildings, trees, power lines, farmland `fieldPoly`), satellite ground image, saved in `data/maps` |
+| `src/lessons/basics.ts` | Beginner exercises 1–10: grading + **demo autopilot** (`BasicLesson.demo`) flying the same objectives with sticks only; `tests/basics.test.ts` proves every demo passes its own exercise |
+| `src/course/*`, `src/ui/course.ts`, `content/course/` | DGCA course (from OSF_DRONE_LEARNING_OS content): modules, KaTeX formulas, quizzes (MCQ + true/false), checklists, training plan, `SIM_LINKS` to sim exercises |
+| `src/server/progressStore.ts`, `api/progress` | Per-student progress (quiz best, exercises, concepts read, checklists) in `data/progress/<userId>.json`; students write only their own, admins read anyone's |
+| `src/ui/router.ts` | Whitelisted History-API routes + shadcn-structured breadcrumbs; `src/app/[[...slug]]/page.tsx` serves every path |
+| `.mcp.json`, `.claude/skills/codegraph/` | CodeGraph code index (MCP `codegraph_explore` + CLI); `.codegraph/` is git-ignored |
 | `tests/*` | `sim` (FC/physics), `mission` (planner, AUTO, breakpoint, score), `world` (every ground), `auth`, `replay` |
 
 ## Rules (learned the hard way — see PROGRESS.md "Lessons")
@@ -74,6 +79,9 @@ On Windows the user starts everything with `start-sim.cmd` (wraps `start-sim.ps1
 16. Real-map worlds can have more obstacles than physics slots: `obstacleList()` keeps the 96 nearest to the take-off area.
 17. UI style: menus and screens are neo-brutalist (`.screen`, `.pause` scoped CSS). The HUD and the tablet stay clean and dark — don't mix them.
 18. **After `next build`, restart any running `server.mjs`.** A production server started before the build serves HTML pointing at deleted chunks → JS 500 → blank page (happened 2026-11-23).
+19. **Guest mode** (`isGuest()`, sessionStorage per tab): never call `saveLog` / persist progress for guests. Entering guest mode logs out any old session and clears progress.
+20. New screens: add the route to `STATIC` / `parse` / `pathFor` / `crumbsFor` in `router.ts` and a branch in `main.ts` `nav()`. Never route on unvalidated params.
+21. Navigating code: use CodeGraph first (see `.claude/skills/codegraph/SKILL.md`).
 12. Keep `MODES` order = WASM mode numbers (0 STAB, 1 ALTHOLD, 2 LOITER, 3 RTL, 4 LAND, 5 AUTO). Event codes ≥ 100 are mode changes.
 
 ## Adding things

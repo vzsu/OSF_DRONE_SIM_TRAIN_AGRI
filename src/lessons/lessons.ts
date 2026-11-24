@@ -4,12 +4,15 @@
 import type { Engine } from '../sim/engine';
 import { CROWD, BOXES, overCrowd } from '../data/world';
 import { settings } from '../settings';
+import { BASICS, BasicLesson } from './basics';
 
 export interface Marker { x: number; y: number; z: number; r: number; kind: 'gate' | 'pad' | 'box' | 'poi'; state: 'next' | 'done' | 'idle' }
 export interface ObjView { text: string; progress: number; done: boolean }
 export interface LessonDef {
   id: string; n: number; title: string; level: 'Basic' | 'Intermediate' | 'Advanced'; kind: 'agri' | 'camera' | 'any';
   brief: string; timeLimit: number; holdAssist?: boolean; wind?: number;
+  /** 'basic' = beginner course (with demo), 'pro' = advanced / agri / camera */
+  track?: 'basic' | 'pro';
 }
 
 export const LESSONS: LessonDef[] = [
@@ -22,7 +25,10 @@ export const LESSONS: LessonDef[] = [
   { id: 'precision', n: 7, title: 'Precision landing', level: 'Intermediate', kind: 'any', timeLimit: 240, brief: 'Take off, fly 20 m out, come back and land within 0.5 m of the pad centre at < 0.6 m/s.' },
   { id: 'orbit', n: 8, title: 'Wedding orbit shot', level: 'Advanced', kind: 'camera', timeLimit: 300, brief: 'Camera drone: orbit the point 360° at 15–30 m radius, nose (camera) on the subject ±30°, never over the guests.' },
 ];
-export const lessonById = (id?: string | null) => LESSONS.find((l) => l.id === id) ?? null;
+for (const l of LESSONS) l.track ??= 'pro';
+/** every lesson: beginner course first, then the advanced ones */
+export const ALL_LESSONS: LessonDef[] = [...BASICS, ...LESSONS];
+export const lessonById = (id?: string | null) => ALL_LESSONS.find((l) => l.id === id) ?? null;
 
 export interface LessonResult { id: string; title: string; passed: boolean; reason: string; time: number; objectives: ObjView[]; checkride: boolean; failure?: string }
 
@@ -34,14 +40,22 @@ export class LessonRunner {
   checkride = false;
   private t = 0; private hold = 0; private step = 0; private extra = 0; private angle = 0; private lastAng = NaN;
   private failAt = 0; private failName = ''; private failDone = false;
+  /** beginner exercise logic (null for advanced lessons) */
+  basic: BasicLesson | null = null;
+  /** true while the lesson is being demonstrated by the autopilot */
+  demo = false;
   onObjectiveDone: (i: number) => void = () => {};
   onFinish: (r: LessonResult) => void = () => {};
 
   start(def: LessonDef | null, e: Engine, checkride: boolean) {
     this.def = def; this.result = null; this.checkride = checkride && !!def;
     this.t = 0; this.hold = 0; this.step = 0; this.extra = 0; this.angle = 0; this.lastAng = NaN; this.failDone = false;
-    this.markers = []; this.objectives = [];
+    this.markers = []; this.objectives = []; this.basic = null;
     if (!def) return;
+    if (def.track === 'basic') {
+      this.basic = new BasicLesson(def.id); this.objectives = this.basic.objectives; this.markers = this.basic.markers;
+      this.failName = ''; this.basic.setup(e); return;
+    }
     // checkride: one random failure between 25 and 70 s (not in the dedicated emergency lesson)
     const pool = e.drone.tankCap > 0 ? ['gps', 'motor', 'rc'] : ['gps', 'rc'];
     this.failName = this.checkride && def.id !== 'motor' ? pool[Math.floor(Math.random() * pool.length)] : '';
@@ -97,6 +111,13 @@ export class LessonRunner {
     const prog = (i: number, p: number) => { const ob = this.objectives[i]; if (ob && !ob.done) ob.progress = Math.max(0, Math.min(1, p)); };
     const near = (m: Marker, r = m.r) => Math.hypot(x - m.x, y - m.y) < r && Math.abs(z - m.z) < Math.max(r, 0.6);
     const softLand = () => landed && !armed && this.extra < 0.7;
+    if (this.basic) {
+      const r = this.basic.update(e, dt, done, prog);
+      this.markers = this.basic.markers;
+      if (r === 'pass') return this.finish(true, '');
+      if (r.startsWith('fail:')) return this.finish(false, r.slice(5));
+      return;
+    }
     if (!landed) this.extra = Math.max(this.extra * 0.98, -vz); // recent descent rate for the touchdown check
     const setNext = (i: number) => this.markers.forEach((m, k) => (m.state = k < i ? 'done' : k === i ? 'next' : m.state === 'done' ? 'done' : 'idle'));
 

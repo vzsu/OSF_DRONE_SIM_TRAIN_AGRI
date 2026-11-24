@@ -3,6 +3,9 @@ import gsap from 'gsap';
 import { mount, header, wireNav } from './screens';
 import { settings, saveSettings } from '../settings';
 import { LESSONS, type LessonRunner, type LessonResult, type LessonDef } from '../lessons/lessons';
+import { BASICS } from '../lessons/basics';
+import { progress } from '../course/progress';
+import { isGuest } from '../auth/client';
 import { droneById } from '../data/drones';
 import { pulse, celebrate, popIn, popOut } from './motion';
 
@@ -22,25 +25,35 @@ export function startLesson(def: LessonDef, nav: Nav) {
   nav('fly');
 }
 
-export function lessonsScreen(nav: Nav) {
-  const best = settings.lessonBest ?? {};
+export function lessonsScreen(nav: Nav, setDemo: (on: boolean) => void = () => {}) {
+  const best = progress.lessons;
   const root = mount(`${header('Lessons & checkride')}
     <p class="muted" style="max-width:720px">Structured training from first hover to emergencies. Each lesson checks your flying live and passes or fails it. <b>Checkride</b> switches all aids off (trail, ground marker, hold assist) and injects one random failure — the exam an instructor signs off.</p>
     <div class="row" style="margin:12px 0 18px"><label class="toggle"><input type="checkbox" id="cr" ${settings.checkride ? 'checked' : ''}> <span>Checkride mode</span></label>
       ${settings.lesson ? '<button class="small" id="free">Free flight (no lesson)</button>' : ''}</div>
-    <div class="grid lessons">${LESSONS.map((l) => {
+    ${isGuest() ? '<p class="guest-note">Guest mode — results are not saved.</p>' : ''}
+    <h2 style="margin-top:6px">Beginner course — watch the demo, then fly it</h2>
+    <p class="small muted">Each exercise is first flown by the autopilot: watch the stick monitor (bottom left) and the checklist fill. Then it is your turn. A tick sound marks every step done.</p>
+    <div class="grid lessons">${BASICS.map((l) => card(l)).join('')}</div>
+    <h2 style="margin-top:22px">Advanced lessons &amp; emergencies</h2>
+    <div class="grid lessons">${LESSONS.map((l) => card(l)).join('')}</div>`);
+  function card(l: LessonDef) {
       const b = best[l.id];
-      return `<div class="card click lesson ${b?.passed ? 'passed' : ''}" data-l="${l.id}">
+    return `<div class="card click lesson ${b?.passed ? 'passed' : ''}" data-l="${l.id}">
         <div class="row spread"><span class="lnum">${l.n}</span><span class="tag">${l.level}</span></div>
         <h3 style="margin-top:8px;text-transform:none;font-size:17px;letter-spacing:0">${esc(l.title)}</h3>
         <p class="small">${esc(l.brief)}</p>
         <div class="row spread small"><span>${l.kind === 'agri' ? 'Agri drone' : l.kind === 'camera' ? 'Camera drone · wedding venue' : 'Any drone'}</span>
-          <span>${b ? (b.passed ? `✓ passed ${fmt(b.time)}${b.checkride ? ' · checkride' : ''}` : 'not passed yet') : 'new'}</span></div></div>`;
-    }).join('')}</div>`);
+          <span>${b ? (b.passed ? `✓ passed ${fmt(b.time)}${b.checkride ? ' · checkride' : ''}` : 'not passed yet') : 'new'}</span></div>
+        ${l.track === 'basic' ? `<div class="row" style="margin-top:10px"><button class="small primary" data-demo="${l.id}">▶ Watch demo, then fly</button><button class="small" data-fly="${l.id}">Fly now</button></div>` : ''}</div>`;
+  }
   wireNav(root, nav);
   root.querySelector<HTMLInputElement>('#cr')!.onchange = (e) => { settings.checkride = (e.target as HTMLInputElement).checked; saveSettings(); };
   const fr = root.querySelector<HTMLButtonElement>('#free'); if (fr) fr.onclick = () => { settings.lesson = null; saveSettings(); lessonsScreen(nav); };
-  root.querySelectorAll<HTMLElement>('[data-l]').forEach((c) => (c.onclick = () => startLesson(LESSONS.find((l) => l.id === c.dataset.l)!, nav)));
+  const all = [...BASICS, ...LESSONS];
+  root.querySelectorAll<HTMLElement>('[data-demo]').forEach((b) => (b.onclick = (ev) => { ev.stopPropagation(); setDemo(true); startLesson(all.find((l) => l.id === b.dataset.demo)!, nav); }));
+  root.querySelectorAll<HTMLElement>('[data-fly]').forEach((b) => (b.onclick = (ev) => { ev.stopPropagation(); setDemo(false); startLesson(all.find((l) => l.id === b.dataset.fly)!, nav); }));
+  root.querySelectorAll<HTMLElement>('[data-l]').forEach((c) => (c.onclick = () => { const l = all.find((x) => x.id === c.dataset.l)!; setDemo(l.track === 'basic' && !progress.lessons[l.id]); startLesson(l, nav); }));
 }
 
 /** Live objective card in the flight HUD. */
@@ -50,9 +63,11 @@ export class LessonCard {
   constructor(parent: HTMLElement) { this.el.className = 'lesson-card'; this.el.style.display = 'none'; parent.appendChild(this.el); }
   update(r: LessonRunner) {
     if (!r.def) { this.el.style.display = 'none'; this.shown = ''; return; }
-    if (this.shown !== r.def.id) {
-      this.shown = r.def.id; this.el.style.display = 'block';
-      this.el.innerHTML = `<div class="lc-head"><b>Lesson ${r.def.n} · ${esc(r.def.title)}</b>${r.checkride ? '<span class="lc-cr">CHECKRIDE</span>' : ''}<span class="lc-t" id="lc-t"></span></div>
+    const key = r.def.id + (r.demo ? ':demo' : '');
+    if (this.shown !== key) {
+      this.shown = key; this.el.style.display = 'block';
+      this.el.innerHTML = `<div class="lc-head"><b>${r.def.track === 'basic' ? 'Exercise' : 'Lesson'} ${r.def.n} · ${esc(r.def.title)}</b>${r.checkride ? '<span class="lc-cr">CHECKRIDE</span>' : ''}${r.demo ? '<span class="lc-demo">DEMO</span><button class="lc-skip" onclick="window.__skipDemo && window.__skipDemo()">Skip demo ▶</button>' : ''}<span class="lc-t" id="lc-t"></span></div>
+        <div class="lc-brief">${esc(r.def.brief)}</div>
         ${r.objectives.map((_, i) => `<div class="lc-obj" data-i="${i}"><i class="lc-chk"></i><span class="lc-txt"></span><span class="lc-bar"><b></b></span></div>`).join('')}`;
       gsap.fromTo(this.el, { y: -14, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: 'expo.out' });
     }

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Bricolage_Grotesque, Instrument_Sans, JetBrains_Mono } from 'next/font/google';
 import 'leaflet/dist/leaflet.css';
+import 'katex/dist/katex.min.css';
 import './globals.css';
 
 // Google font pairing, self-hosted by next/font at build time (works offline on the LAN):

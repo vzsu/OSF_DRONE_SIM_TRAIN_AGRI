@@ -1,0 +1,447 @@
+{
+  "subject": "DGCA RPC Theory",
+  "topic": "Flight Planning, Emergencies, Navigation & Regulations",
+  "concepts": [
+    {
+      "id": "c-flight-planning",
+      "name": "Flight Planning, RT Phraseology & ATC Procedures",
+      "formula": "\\text{Flight Plan} = \\text{Route} + \\text{Altitude} + \\text{Timing} + \\text{Emergency Contingency}",
+      "explanation": "Flight planning includes route selection, altitude assignment, contingency planning, fuel/endurance calculation, and NOTAM check. RT (Radio Telephony) phraseology follows ICAO-standard phraseology: readbacks, standard callouts, clearances. ATC procedures: obtain clearance before entering controlled airspace, maintain two-way communication, comply with ATC instructions. Key terms: squawk codes, transponder modes, emergency codes (7700).",
+      "application": "Planning a legal and safe flight — from pre-flight briefing through clearance to post-flight debrief — and communicating correctly with ATC.",
+      "reference": {
+        "type": "book",
+        "title": "Flight Planning & ATC Procedures — DGCA RPTO Ground Class",
+        "author": "DGCA Authorized Training Organization",
+        "location": "Flight planning and RT modules"
+      }
+    },
+    {
+      "id": "c-emergency-procedures",
+      "name": "Emergency Procedures, Failsafe, Airworthiness & Maintenance",
+      "formula": "\\text{Link lost} \\Rightarrow \\text{RTH / land}\\quad\\text{Failure mode} = \\text{graceful degradation}",
+      "explanation": "Emergency procedures: controlled descent/landing on lost link, RTH activation, battery low-voltage landing, motor failure protocols. Failsafe design: two-layer approach (RX failsafe + FC failsafe). Airworthiness: a UAS must be in airworthy condition before flight — pre-flight inspection, prop balance, battery health, sensor calibration. Maintenance: scheduled checks, logbook entries, component replacement per manufacturer data.",
+      "application": "Knowing the correct emergency response for each failure mode and ensuring the aircraft is maintained in airworthy condition.",
+      "reference": {
+        "type": "book",
+        "title": "Emergency Procedures & Airworthiness — DGCA RPTO Ground Class",
+        "author": "DGCA Authorized Training Organization",
+        "location": "Emergency and maintenance modules"
+      }
+    },
+    {
+      "id": "c-navigation-gps",
+      "name": "Navigation — Maps, Coordinates & GPS/GNSS Basics",
+      "formula": "\\text{LLA} = (\\text{lat}, \\text{lon}, \\text{alt});\\quad \\text{UTM} = (\\text{zone}, \\text{E}, \\text{N})",
+      "explanation": "Navigation fundamentals: coordinate systems (latitude/longitude, UTM), map reading (topographic maps, legend symbols), GPS/GNSS constellations (GPS/USA, GLONASS/Russia, Galileo/EU, NavIC/India). Position accuracy and dilution of precision (PDOP). Geofencing uses GPS coordinates to create virtual boundaries. Magnetic declination correction for compass readings. NavIC (Navigation with Indian Constellation) is India's regional navigation system.",
+      "application": "Using maps, coordinates, and GNSS to navigate accurately and understand position accuracy limitations in drone operations.",
+      "reference": {
+        "type": "book",
+        "title": "Navigation Systems — DGCA RPTO Ground Class",
+        "author": "DGCA Authorized Training Organization",
+        "location": "Navigation and GPS module"
+      }
+    },
+    {
+      "id": "c-drone-regulations-legal",
+      "name": "DGCA Legal Framework — Rules, Certifications & Liability",
+      "formula": "\\text{Penalty}_{\\max} = \\text{₹1,00,000}\\quad\\text{RPC}_{\\text{validity}} = 10\\text{ years}",
+      "explanation": "Consolidated legal framework: Drone Rules 2021 (as amended 2022) structure, UIN/Type Certificate/RC requirements and their exemptions, insurance mandates, no-fly zone classifications and penalties, BVLOS permissions, and the Digital Sky Platform workflow. Liability: third-party liability insurance mandatory (except Nano), penalty structure for violations, and the distinction between commercial and non-commercial operations.",
+      "application": "Understanding the complete legal landscape so an operator knows their obligations, exemptions, and the consequences of violations.",
+      "reference": {
+        "type": "book",
+        "title": "Drone Rules 2021 (as amended) — Complete Summary",
+        "author": "Ministry of Civil Aviation, Government of India",
+        "location": "All rules and amendments"
+      }
+    }
+  ],
+  "questions": [
+    {
+      "type": "truefalse",
+      "question": "GPS/GNSS provides both position and altitude data, but its accuracy can be degraded by atmospheric conditions and satellite geometry.",
+      "correctAnswer": true,
+      "explanation": "GPS/GNSS position accuracy depends on satellite geometry (PDOP), atmospheric delays, and multipath effects.",
+      "conceptId": "c-navigation-gps"
+    },
+    {
+      "type": "mcq",
+      "question": "NavIC is India's own regional navigation satellite system. What does NavIC stand for?",
+      "options": [
+        "Navigation with Indian Constellation",
+        "National Vehicle Integration Circuit",
+        "Navigational Instrumentation for Civil",
+        "Network for Indian Cartography"
+      ],
+      "correctIndex": 0,
+      "explanation": "NavIC = Navigation with Indian Constellation, developed by ISRO for Indian regional coverage.",
+      "conceptId": "c-navigation-gps"
+    },
+    {
+      "type": "mcq",
+      "question": "Which of the following is NOT a commonly available GNSS constellation?",
+      "options": [
+        "GPS (USA)",
+        "GLONASS (Russia)",
+        "Galileo (EU)",
+        "KALPANA (India)"
+      ],
+      "correctIndex": 3,
+      "explanation": "KALPANA is not a GNSS constellation. India's system is NavIC. GPS, GLONASS, and Galileo are real global constellations.",
+      "conceptId": "c-navigation-gps"
+    },
+    {
+      "type": "mcq",
+      "question": "Geofencing in drone operations primarily uses which technology to create virtual boundaries?",
+      "options": [
+        "Radio signal strength",
+        "GPS/GNSS coordinates",
+        "Visual landmark recognition only",
+        "Barometric altitude only"
+      ],
+      "correctIndex": 1,
+      "explanation": "Geofencing uses GPS/GNSS coordinates to define virtual boundaries that the flight controller enforces.",
+      "conceptId": "c-navigation-gps"
+    },
+    {
+      "type": "mcq",
+      "question": "A flight plan must include all of the following EXCEPT:",
+      "options": [
+        "Route and altitude",
+        "Contingency/emergency plan",
+        "The pilot's favorite music playlist",
+        "Timing and endurance calculation"
+      ],
+      "correctIndex": 2,
+      "explanation": "A proper flight plan includes route, altitude, timing, endurance, and contingency planning. Personal preferences like music are not part of a flight plan.",
+      "conceptId": "c-flight-planning"
+    },
+    {
+      "type": "mcq",
+      "question": "In standard radio telephony phraseology, what does the pilot say after receiving a clearance?",
+      "options": [
+        "Nothing — just comply",
+        "Read back the clearance",
+        "Repeat the clearance back twice",
+        "Say 'Roger' only"
+      ],
+      "correctIndex": 1,
+      "explanation": "Standard RT procedure requires the pilot to read back clearances so the controller can verify correct understanding.",
+      "conceptId": "c-flight-planning"
+    },
+    {
+      "type": "truefalse",
+      "question": "A pilot can enter controlled airspace without ATC clearance if they have a valid RPC and the flight is non-commercial.",
+      "correctAnswer": false,
+      "explanation": "ATC clearance is required to enter controlled airspace regardless of whether the flight is commercial or non-commercial, and regardless of RPC status.",
+      "conceptId": "c-flight-planning"
+    },
+    {
+      "type": "mcq",
+      "question": "What is the standard transponder emergency squawk code?",
+      "options": [
+        "7500",
+        "7600",
+        "7700",
+        "1200"
+      ],
+      "correctIndex": 2,
+      "explanation": "7700 is the universal emergency squawk code. 7500 = hijacking, 7600 = radio failure, 1200 = VFR squawk in US airspace.",
+      "conceptId": "c-flight-planning"
+    },
+    {
+      "type": "mcq",
+      "question": "A NOTAM (Notice to Airmen) is most commonly used to communicate:",
+      "options": [
+        "Permanent airport closures only",
+        "Temporary changes or hazards affecting flight operations",
+        "Weather forecasts for the next month",
+        "Drone registration instructions"
+      ],
+      "correctIndex": 1,
+      "explanation": "NOTAMs communicate temporary changes, hazards, restrictions, or status changes that affect flight operations.",
+      "conceptId": "c-flight-planning"
+    },
+    {
+      "type": "mcq",
+      "question": "Before every flight, a pilot should check NOTAMs to identify:",
+      "options": [
+        "Only weather forecasts",
+        "Temporary flight restrictions, hazards, or NOTAMed areas",
+        "Other pilots' call signs",
+        "Battery prices"
+      ],
+      "correctIndex": 1,
+      "explanation": "NOTAMs inform pilots of temporary restrictions, hazards, or changes that may affect a planned flight.",
+      "conceptId": "c-flight-planning"
+    },
+    {
+      "type": "short",
+      "question": "List three elements that must be included in a drone flight plan.",
+      "correctAnswer": "Route, altitude, and timing (or contingency plan, endurance calculation, NOTAM check).",
+      "explanation": "A complete flight plan covers route, altitude assignment, timing/endurance, and emergency contingency.",
+      "conceptId": "c-flight-planning"
+    },
+    {
+      "type": "mcq",
+      "question": "A pre-flight inspection verifies airworthiness. Which of the following should be checked?",
+      "options": [
+        "Propeller condition and balance",
+        "Battery health and voltage",
+        "Sensor calibration status",
+        "All of the above"
+      ],
+      "correctIndex": 3,
+      "explanation": "Pre-flight inspection should check propellers, battery, sensors, and all airworthiness-critical components.",
+      "conceptId": "c-emergency-procedures"
+    },
+    {
+      "type": "truefalse",
+      "question": "A drone that passed its last maintenance check never needs another pre-flight inspection before each flight.",
+      "correctAnswer": false,
+      "explanation": "Pre-flight inspection is required before EVERY flight regardless of recent maintenance — conditions can change between checks.",
+      "conceptId": "c-emergency-procedures"
+    },
+    {
+      "type": "mcq",
+      "question": "In a two-layer failsafe system, what is the role of the receiver (RX) failsafe?",
+      "options": [
+        "To provide backup navigation",
+        "To hold safe values on signal loss so the FC can act on them",
+        "To charge the battery",
+        "To stream video"
+      ],
+      "correctIndex": 1,
+      "explanation": "RX failsafe holds the receiver outputs at safe values (e.g., throttle zero) when signal is lost, so the flight controller can then execute its own failsafe (RTH or land).",
+      "conceptId": "c-emergency-procedures"
+    },
+    {
+      "type": "mcq",
+      "question": "When the flight controller's failsafe is set to 'RTH' and link is lost, the drone will:",
+      "options": [
+        "Hover in place",
+        "Return to its home point",
+        "Immediately cut all motors",
+        "Fly in a random direction"
+      ],
+      "correctIndex": 1,
+      "explanation": "RTH (Return-to-Home) failsafe commands the drone to return to its recorded home position when link is lost.",
+      "conceptId": "c-emergency-procedures"
+    },
+    {
+      "type": "mcq",
+      "question": "A pilot discovers their drone's flight controller log shows repeated low-voltage warnings during recent flights. This indicates the aircraft may not be:",
+      "options": [
+        "Airworthy",
+        "The correct color",
+        "Registered on Digital Sky",
+        "Equipped with a camera"
+      ],
+      "correctIndex": 0,
+      "explanation": "Repeated low-voltage warnings indicate the battery/propulsion system may not be performing reliably — an airworthiness concern.",
+      "conceptId": "c-emergency-procedures"
+    },
+    {
+      "type": "mcq",
+      "question": "Which maintenance activity is typically documented in a drone's logbook?",
+      "options": [
+        "Flight hours, battery cycles, component replacements, and inspection dates",
+        "Only the purchase price",
+        "The pilot's personal notes about weather",
+        "Music playlists used during flights"
+      ],
+      "correctIndex": 0,
+      "explanation": "Logbook entries track flight hours, battery cycles, component replacements, and inspection dates for maintenance tracking and airworthiness compliance.",
+      "conceptId": "c-emergency-procedures"
+    },
+    {
+      "type": "mcq",
+      "question": "Which of the following is a correct statement about NavIC?",
+      "options": [
+        "It is a US-only navigation system",
+        "It provides regional coverage primarily over India",
+        "It cannot be used by civilian drones",
+        "It is the same as GLONASS"
+      ],
+      "correctIndex": 1,
+      "explanation": "NavIC (Navigation with Indian Constellation) provides regional navigation coverage primarily over India, developed by ISRO.",
+      "conceptId": "c-navigation-gps"
+    },
+    {
+      "type": "mcq",
+      "question": "UTM coordinates specify a location using which parameters?",
+      "options": [
+        "Latitude, longitude, and altitude",
+        "Zone number, Easting, and Northing",
+        "Heading, pitch, and roll",
+        "Squawk code, altitude, and speed"
+      ],
+      "correctIndex": 1,
+      "explanation": "UTM (Universal Transverse Mercator) uses zone number, Easting, and Northing to specify a location in a projected coordinate system.",
+      "conceptId": "c-navigation-gps"
+    },
+    {
+      "type": "short",
+      "question": "Name the two layers of a two-layer failsafe system for drone operations.",
+      "correctAnswer": "Receiver (RX) failsafe and Flight Controller (FC) failsafe.",
+      "explanation": "Layer 1: RX holds safe values on signal loss. Layer 2: FC executes its own protocol (RTH, land, or hover) based on those safe values.",
+      "conceptId": "c-emergency-procedures"
+    },
+    {
+      "type": "mcq",
+      "question": "The DGCA maximum penalty for drone rule violations (as amended, 2022) is ₹1,00,000. This amount represents:",
+      "options": [
+        "A minimum fine only",
+        "The maximum penalty that can be imposed",
+        "A guideline only — actual fines are always lower",
+        "The fee for an RPC application"
+      ],
+      "correctIndex": 1,
+      "explanation": "₹1,00,000 is the maximum penalty under Drone Rules 2021 (as amended, 2022) for violations including no-fly zone incursions and unregulated operations.",
+      "conceptId": "c-drone-regulations-legal"
+    },
+    {
+      "type": "mcq",
+      "question": "A pilot discovers their drone is not registered on Digital Sky and they do not have a UIN. Which statement is correct if the drone weighs 300 g?",
+      "options": [
+        "They can fly without any registration since it's close to Nano weight",
+        "They need a UIN — 300 g exceeds the 250 g Nano threshold",
+        "They only need insurance, not registration",
+        "They can fly in Green Zone without registration"
+      ],
+      "correctIndex": 1,
+      "explanation": "300 g exceeds the 250 g Nano threshold, making it a Micro UAS. Micro UAS requires UIN registration on Digital Sky.",
+      "conceptId": "c-drone-regulations-legal"
+    },
+    {
+      "type": "mcq",
+      "question": "When a drone's C2 link is lost and the RX failsafe is engaged, the flight controller receives:",
+      "options": [
+        "Random commands from the last known signal",
+        "Safe hold values (e.g., zero throttle, level attitude)",
+        "Emergency navigation data",
+        "No change — the FC ignores the RX"
+      ],
+      "correctIndex": 1,
+      "explanation": "RX failsafe holds the receiver outputs at pre-defined safe values (typically zero throttle, level attitude) so the FC can execute its own failsafe protocol.",
+      "conceptId": "c-emergency-procedures"
+    },
+    {
+      "type": "truefalse",
+      "question": "A Type Certificate is required for all UAS categories without any exceptions.",
+      "correctAnswer": false,
+      "explanation": "Type Certificate is required except for Nano, model RPA, and DGCA-authorized R&D organizations.",
+      "conceptId": "c-drone-regulations-legal"
+    },
+    {
+      "type": "mcq",
+      "question": "A pilot is operating a Small UAS (15 kg) at 100 m AGL in an area 15 km from an airport perimeter. The NOTAM for that area shows a temporary restricted zone due to a military exercise. What should the pilot do?",
+      "options": [
+        "Continue flying — the area is outside the 8–12 km airport band so it's Green Zone",
+        "Check NOTAM and comply — temporary restricted zones override normal zone classification",
+        "Fly at lower altitude to avoid the restriction",
+        "The military exercise only applies to manned aircraft"
+      ],
+      "correctIndex": 1,
+      "explanation": "NOTAMs can create temporary restricted zones that override normal zone classification. The pilot must check and comply with NOTAMs before every flight.",
+      "conceptId": "c-flight-planning"
+    },
+    {
+      "type": "mcq",
+      "question": "A pilot wants to verify that their drone's GPS provides accurate position data before a critical survey mission. What concept describes the quality of GPS position accuracy?",
+      "options": [
+        "CAVOK",
+        "PDOP (Position Dilution of Precision)",
+        "VLOS",
+        "TAS"
+      ],
+      "correctIndex": 1,
+      "explanation": "PDOP (Position Dilution of Precision) describes GPS position accuracy quality — higher PDOP means worse accuracy due to poor satellite geometry.",
+      "conceptId": "c-navigation-gps"
+    },
+    {
+      "type": "mcq",
+      "question": "Which of the following is a correct statement about the DGCA RPC validity?",
+      "options": [
+        "RPC is valid for 5 years and cannot be renewed",
+        "RPC is valid for 10 years from issuance",
+        "RPC is valid only for the duration of a single flight",
+        "RPC never expires once issued"
+      ],
+      "correctIndex": 1,
+      "explanation": "RPC is valid for 10 years from the date of issuance under DGCA regulations.",
+      "conceptId": "c-drone-regulations-legal"
+    },
+    {
+      "type": "mcq",
+      "question": "An operator's RPC expired 6 months ago but they have not renewed it. If they operate a drone commercially, they are violating:",
+      "options": [
+        "Only the insurance requirement",
+        "The requirement to hold a valid RPC",
+        "The weather reporting rules",
+        "The airspace zone classification"
+      ],
+      "correctIndex": 1,
+      "explanation": "Operating with an expired RPC violates the requirement to hold a valid Remote Pilot Certificate. RPC validity is 10 years and must be renewed.",
+      "conceptId": "c-drone-regulations-legal"
+    },
+    {
+      "type": "truefalse",
+      "question": "The DGCA's 2022 amendment to the Drone Rules simplified some permission structures that existed in the earlier 2021 notification.",
+      "correctAnswer": true,
+      "explanation": "The 2022 amendment simplified the permission structure that was more complex in the original 2021 notification.",
+      "conceptId": "c-drone-regulations-legal"
+    },
+    {
+      "type": "mcq",
+      "question": "Which of the following is the correct sequence for a flight planning process?",
+      "options": [
+        "Check NOTAMs → Plan route/altitude → Check weather → File flight plan → Execute",
+        "Execute immediately → Check weather → Check NOTAMs later → File flight plan",
+        "Check weather only → Fly → File NOTAMs after landing",
+        "File flight plan → Skip NOTAMs → Check weather → Execute"
+      ],
+      "correctIndex": 0,
+      "explanation": "The correct sequence: check NOTAMs, plan route/altitude, check weather, file/create flight plan with contingencies, then execute.",
+      "conceptId": "c-flight-planning"
+    },
+    {
+      "type": "mcq",
+      "question": "Which of the following best describes the purpose of geofencing in RPAS operations?",
+      "options": [
+        "To increase the drone's flight speed",
+        "To create virtual boundaries the drone cannot legally or safely cross",
+        "To improve camera resolution",
+        "To encrypt the C2 link"
+      ],
+      "correctIndex": 1,
+      "explanation": "Geofencing creates virtual boundaries using GPS coordinates that prevent the drone from entering restricted or hazardous areas.",
+      "conceptId": "c-navigation-gps"
+    },
+    {
+      "type": "mcq",
+      "question": "An operator wants to fly a 200 g drone commercially. Does the pilot need a Remote Pilot Certificate?",
+      "options": [
+        "No — nobody needs an RPC to fly a Nano UAS (≤250 g), commercial or not",
+        "Yes — every commercial flight needs an RPC",
+        "Yes — commercial use moves it into the Micro category",
+        "Only if it flies above 200 ft AGL"
+      ],
+      "correctIndex": 0,
+      "explanation": "Drone Rules 2021 exempts from the RPC anyone flying a Nano UAS (for any purpose) or a Micro UAS for non-commercial use. The category depends on all-up weight only, not purpose. Airspace zone rules still apply.",
+      "conceptId": "c-drone-regulations-legal"
+    },
+    {
+      "type": "mcq",
+      "question": "The DGCA RPTO ground class curriculum includes training on:",
+      "options": [
+        "Only drone assembly",
+        "Air regulations, airspace, meteorology, flight theory, systems, human factors, navigation, and emergencies",
+        "Only flight simulator operation",
+        "Only commercial drone photography techniques"
+      ],
+      "correctIndex": 1,
+      "explanation": "The DGCA RPTO ground class covers the full syllabus: air law, airspace, meteorology, flight principles, RPAS systems, human factors, navigation, and emergency procedures.",
+      "conceptId": "c-drone-regulations-legal"
+    }
+  ]
+}

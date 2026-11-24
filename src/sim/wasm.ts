@@ -32,7 +32,7 @@ export interface Failures { motor: number; gps: boolean; compassErrDeg: number }
 
 export interface SimCore {
   P: Float64Array; IN: Float64Array; OUT: Float64Array;
-  setup(): void; reset(): void; step(dt: number, n: number): void; service(soc: number, tankL: number): void;
+  setup(): void; reset(): void; step(dt: number, n: number): void; service(soc: number, tankL: number): void; spawnAir(x: number, y: number, z: number, mode: number): void;
 }
 
 export async function loadSim(bytes: ArrayBuffer | Uint8Array): Promise<SimCore> {
@@ -44,7 +44,7 @@ export async function loadSim(bytes: ArrayBuffer | Uint8Array): Promise<SimCore>
   const view = (ptr: number, n: number) => new Float64Array(mem.buffer, ptr, n);
   const core: SimCore = {
     P: view(ex.paramsPtr(), P_SIZE), IN: view(ex.inputsPtr(), I_SIZE), OUT: view(ex.outputsPtr(), O_SIZE),
-    setup: () => ex.setup(), reset: () => ex.reset(), step: (dt, n) => ex.step(dt, n), service: (soc, tank) => ex.service(soc, tank),
+    setup: () => ex.setup(), reset: () => ex.reset(), step: (dt, n) => ex.step(dt, n), service: (soc, tank) => ex.service(soc, tank), spawnAir: (x, y, z, m) => ex.spawnAir(x, y, z, m),
   };
   return core;
 }

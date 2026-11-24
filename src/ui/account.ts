@@ -1,6 +1,9 @@
 // Login screen (students + instructors) and the admin panel (manage students, see progress).
 import { mount, header, wireNav } from './screens';
-import { login, listUsers, createUser, updateUser, deleteUser, currentUser, type User } from '../auth/client';
+import { login, listUsers, createUser, updateUser, deleteUser, currentUser, enterGuest, type User } from '../auth/client';
+import type { Progress } from '../server/progressStore';
+import { COURSE } from '../course/content';
+import { loadProgress } from '../course/progress';
 import { listLogs } from '../logs/db';
 
 type Nav = (screen: string, arg?: unknown) => void;
@@ -16,8 +19,13 @@ export function loginScreen(nav: Nav) {
         <p class="bad small" id="le"></p>
         <button class="primary" type="submit">Sign in</button>
       </form>
-      <p class="small muted" style="margin-top:12px">Students: ask your instructor for an account.<br>Instructor, first time: the server created <b>admin</b> with a one-time password — see <code>data/ADMIN_FIRST_LOGIN.txt</code> on the server PC (also printed in the server window).</p>
+      <div class="or"><span>or</span></div>
+      <button id="guest" class="guest-btn">Continue in guest mode</button>
+      <p class="small muted" style="margin-top:6px">Guest mode: every screen, the course and the simulator work — but <b>nothing is saved</b> (no flight logs, scores or progress).</p>
+      <p class="small muted" style="margin-top:12px">Students: ask your instructor for an account. Instructors sign in as <b>admin</b>.</p>
     </div>`);
+  // guest: sign out any old session first and start with empty progress — nothing from an account leaks in
+  root.querySelector<HTMLButtonElement>('#guest')!.onclick = async () => { await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {}); enterGuest(); await loadProgress(); nav('home'); };
   const f = root.querySelector<HTMLFormElement>('#lf')!;
   f.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -25,6 +33,7 @@ export function loginScreen(nav: Nav) {
     err.textContent = '';
     try {
       await login(root.querySelector<HTMLInputElement>('#lu')!.value, root.querySelector<HTMLInputElement>('#lp')!.value);
+      await loadProgress();
       nav('home');
     } catch (x) { err.textContent = x instanceof Error ? x.message : String(x); }
   });
@@ -69,6 +78,10 @@ export async function adminScreen(nav: Nav) {
     let users: User[] = [];
     try { users = await listUsers(); } catch (x) { el.textContent = String(x); return; }
     const logs = await listLogs();
+    const prog = new Map<string, Progress>();
+    await Promise.all(users.map(async (u) => { try { const r = await fetch(`/api/progress?user=${encodeURIComponent(u.id)}`, { cache: 'no-store' }); if (r.ok) prog.set(u.id, await r.json()); } catch { /* skip */ } }));
+    const theory = (u: User) => { const p = prog.get(u.id); if (!p) return '—'; const qs = COURSE.modules.map((m) => p.quiz[m.id]?.best).filter((v): v is number => v !== undefined); return qs.length ? `${qs.filter((v) => v >= 70).length}/${COURSE.modules.length} passed · avg ${Math.round(qs.reduce((a, b) => a + b, 0) / qs.length)}%` : 'not started'; };
+    const exercises = (u: User) => { const p = prog.get(u.id); if (!p) return '—'; return `${Object.values(p.lessons).filter((l) => l.passed).length} passed`; };
     const stat = (u: User) => {
       const mine = logs.filter((l) => (l.header as { userId?: string }).userId === u.id);
       const scores = mine.map((l) => l.summary.score).filter((s): s is number => typeof s === 'number');
@@ -77,9 +90,9 @@ export async function adminScreen(nav: Nav) {
       const last = mine[0]?.header.startedAt;
       return { n: mine.length, avg: scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null, best: scores.length ? Math.max(...scores) : null, crashes, mins, last };
     };
-    el.innerHTML = `<table><tr><th>Name</th><th>Username</th><th>Role</th><th>Flights</th><th>Flight time</th><th>Avg / best score</th><th>Crashes</th><th>Last flight</th><th></th></tr>
+    el.innerHTML = `<table><tr><th>Name</th><th>Username</th><th>Role</th><th>Flights</th><th>Flight time</th><th>Avg / best score</th><th>Theory quizzes</th><th>Sim exercises</th><th>Crashes</th><th>Last flight</th><th></th></tr>
       ${users.map((u) => { const s = stat(u); return `<tr data-u="${u.id}"><td>${esc(u.name)}</td><td>${esc(u.username)}</td><td><span class="tag">${u.role}</span></td>
-        <td>${s.n}</td><td>${s.mins.toFixed(0)} min</td><td>${s.avg ?? '—'} / ${s.best ?? '—'}</td><td class="${s.crashes ? 'bad' : ''}">${s.crashes}</td>
+        <td>${s.n}</td><td>${s.mins.toFixed(0)} min</td><td>${s.avg ?? '—'} / ${s.best ?? '—'}</td><td class="small">${theory(u)}</td><td class="small">${exercises(u)}</td><td class="${s.crashes ? 'bad' : ''}">${s.crashes}</td>
         <td class="small">${s.last ? new Date(s.last).toLocaleString() : '—'}</td>
         <td><button class="small" data-pw>Reset password</button> ${u.id === currentUser?.id ? '' : '<button class="small danger" data-del>Delete</button>'}</td></tr>`; }).join('')}</table>
       <p class="small muted">Open <b>Flight logs</b> to review any trainee's flight, debrief and score. Flights recorded before logins existed belong to no user (visible to admins only).</p>`;
