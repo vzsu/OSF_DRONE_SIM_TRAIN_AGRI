@@ -20,9 +20,22 @@ export interface DtosHooks {
 export async function dtosScreen(hooks: DtosHooks) {
   const root = mount(`<div class="home-hero"><h1>Drone Training OS · Simulator</h1><p class="muted" id="dt-msg">Checking your link…</p></div>`);
   let L: DtosLaunch | null = dtos?.launch ?? null;
-  try { L = L ?? (await resolveLaunch()); }
-  catch (e) {
-    root.querySelector('#dt-msg')!.innerHTML = `<span class="bad">${esc((e as Error).message)}</span><br>Go back to Drone Training OS → Training → Simulator and press <b>Fly</b> again.`;
+  // the simulator or the Training OS may still be starting: retry a few times before giving up
+  let err: Error | null = null;
+  for (let i = 0; i < 4 && !L; i++) {
+    try { L = L ?? (await resolveLaunch()); err = null; }
+    catch (e) {
+      err = e as Error;
+      const st = (e as { status?: number }).status;
+      if (st === 404 || st === 400 || st === 403) break; // expired / invalid: retrying will not help
+      root.querySelector('#dt-msg')!.textContent = `Connecting to Drone Training OS… (${esc(err.message)})`;
+      await new Promise((r) => setTimeout(r, 1500 * (i + 1)));
+    }
+  }
+  if (err) {
+    root.querySelector('#dt-msg')!.innerHTML = `<span class="bad">${esc(err.message)}</span><br>Go back to Drone Training OS → Training → Simulator and press <b>Fly</b> again — each button press makes a fresh link (valid 4 hours).
+      <div class="row" style="justify-content:center;margin-top:14px"><button class="primary" id="dt-retry">Try again</button></div>`;
+    root.querySelector<HTMLButtonElement>('#dt-retry')!.onclick = () => void dtosScreen(hooks);
     return;
   }
   if (!L) { root.querySelector('#dt-msg')!.innerHTML = 'Open the simulator from Drone Training OS → Training → Simulator.'; return; }
@@ -40,7 +53,7 @@ export async function dtosScreen(hooks: DtosHooks) {
   const box = mount(`
     <div class="home-hero">
       <div class="eyebrow">${esc(L.orgName)} · ${esc(L.collegeName)}</div>
-      <h1>${esc(L.exercise?.id ?? '')} · ${esc(L.exercise?.title ?? lesson.title)}</h1>
+      <h1>${L.checkride ? `<span>${esc(L.checkride.title)}</span>` : `<span>${esc(L.exercise?.id ?? '')}</span> · <span>${esc(L.exercise?.title ?? lesson.title)}</span>`}</h1>
       <p class="muted">${esc(L.exercise?.objective ?? '')}</p>
     </div>
     <div class="grid" style="grid-template-columns:minmax(280px,1.3fr) minmax(260px,1fr);align-items:start">
@@ -50,11 +63,12 @@ export async function dtosScreen(hooks: DtosHooks) {
         <ul class="small" style="line-height:1.7;padding-left:18px">
           <li>First watch the demo — the sticks are shown bottom-left — then it's your turn.</li>
           <li>RTH, auto-land and AUTO are disabled. Fly it by hand.</li>
-          <li>When you finish, your result and the recorded flight go to <b>${esc(L.orgName)}</b> automatically. Your instructor can replay it.</li>
+          <li>When you finish, your result and the recorded flight go to the Training OS automatically. Your instructor can replay it.</li>
         </ul>
+        ${L.checkride ? `<p class="guest-note"><span>Checkride: no demo, flight aids off. Your best passed attempt counts.</span><br><span>Time left</span>: <b id="dt-left">—</b></p>` : ''}
         <div class="row" style="margin-top:12px">
-          <button class="primary" id="dt-demo">▶ Watch demo, then fly</button>
-          <button id="dt-fly">Fly now</button>
+          ${L.checkride ? '' : '<button class="primary" id="dt-demo">▶ Watch demo, then fly</button>'}
+          <button ${L.checkride ? 'class="primary"' : ''} id="dt-fly">${L.checkride ? '▶ Start checkride flight' : 'Fly now'}</button>
         </div>
       </div>
       <div class="card">
@@ -64,11 +78,17 @@ export async function dtosScreen(hooks: DtosHooks) {
           <span>Drone</span><span>${esc(droneById(lesson.kind === 'camera' ? 'dji_mavic3pro' : settings.droneId).name)}</span>
           <span>Controller</span><span>${pad ? esc(pad.id) : 'Keyboard (no RC detected)'}</span>
         </div>
-        <p class="small muted" style="margin-top:10px">Radiomaster Pocket: plug in by USB-C, choose <b>USB Joystick (HID)</b> and move a stick. Calibrate once in Settings → Controller.</p>
+        <p class="small muted" style="margin-top:10px">Radiomaster Pocket: plug in by USB-C, choose USB Joystick (HID) and move a stick. Calibrate once in Settings → Controller.</p>
       </div>
     </div>`);
-  box.querySelector<HTMLButtonElement>('#dt-demo')!.onclick = () => hooks.fly(lesson.id, true);
+  const demoBtn = box.querySelector<HTMLButtonElement>('#dt-demo');
+  if (demoBtn) demoBtn.onclick = () => hooks.fly(lesson.id, true);
   box.querySelector<HTMLButtonElement>('#dt-fly')!.onclick = () => hooks.fly(lesson.id, false);
+  if (L.checkride) {
+    const end = Date.parse(L.checkride.endsAt);
+    const tick = () => { const el = box.querySelector('#dt-left'); if (!el) return; const s = Math.max(0, (end - Date.now()) / 1000); el.textContent = `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`; if (s > 0) setTimeout(tick, 1000); };
+    tick();
+  }
 }
 
 /** Replay controls (DOM overlay). The caller renders frames with player.fake as the engine. */

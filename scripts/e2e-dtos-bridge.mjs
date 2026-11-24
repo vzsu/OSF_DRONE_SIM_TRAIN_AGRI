@@ -64,6 +64,31 @@ try {
   const fl = await bridge("GET", `/sim/bridge/flight/${rt}`, null, { "x-dtos-key": key });
   ok(fl.status === 200 && fl.body.toString("ascii", 0, 4) === "OSFZ", "replay link returns the stored .osfz flight");
   ok(fs.existsSync(path.join(data, "sim-flights", String(st.body.id), "f1700000000003.osfz")), "flight file stored in the student's folder");
+  // ---- test types
+  const mods = (await stu("GET", "/content/theory")).body.modules;
+  const mt = await admin("POST", "/exams", { kind: "module", modules: [mods[0].id], questionCount: 5, durationMin: 10, passMark: 60 });
+  ok(mt.status === 200 && mt.body.exam.kind === "module" && mt.body.exam.questionCount === 5, "module test created from one module");
+  ok((await admin("POST", "/exams", { kind: "sim", lessons: [] })).status === 400, "checkride needs at least one lesson");
+  const ck = await admin("POST", "/exams", { kind: "sim", lessons: ["b5", "b6"], durationMin: 30, passMark: 70, title: "Checkride 1" });
+  ok(ck.status === 200 && ck.body.exam.config.lessons.length === 2, "simulator checkride created (Square + Right circle)");
+  ok((await stu("POST", "/sim/launch", { mode: "fly", examId: ck.body.exam.id, lessonId: "b5" })).status === 400, "cannot fly a checkride before it is live");
+  ok((await admin("POST", `/exams/${ck.body.exam.id}/start`)).status === 200, "checkride started");
+  const paper = await stu("GET", "/exam/current");
+  ok(paper.body.exam.kind === "sim" && paper.body.lessons.length === 2, "student exam room shows the two checkride lessons");
+  ok((await stu("POST", "/sim/launch", { mode: "fly", examId: ck.body.exam.id, lessonId: "b8" })).status === 400, "lesson outside the checkride refused");
+  const CL = await stu("POST", "/sim/launch", { mode: "fly", examId: ck.body.exam.id, lessonId: "b5" });
+  const ct = new URL(CL.body.url).searchParams.get("t");
+  const ci = await bridge("GET", `/sim/bridge/launch/${ct}`, null, { "x-dtos-key": key });
+  ok(ci.body.checkride?.examId === ck.body.exam.id && ci.body.exercise === null, "simulator is told it is a checkride");
+  const cr = await bridge("POST", "/sim/bridge/result", { token: ct, lessonId: "b5", passed: true, score: 90, time: 120, objectives: [], drone: "x", summary: {} }, { "x-dtos-key": key });
+  ok(cr.status === 200 && cr.body.exerciseScore === 45, `checkride score so far = mean(90, 0) = ${cr.body.exerciseScore}`);
+  ok((await admin("POST", `/exams/${ck.body.exam.id}/stop`)).status === 200, "checkride stopped and graded");
+  ok((await bridge("POST", "/sim/bridge/result", { token: ct, lessonId: "b5", passed: true, score: 99, time: 1, objectives: [], drone: "x", summary: {} }, { "x-dtos-key": key })).status !== 200, "late result after the checkride ended is refused");
+  const s2 = (await stu("GET", "/me/summary")).body.summary;
+  const t = s2.tests.find((x) => x.examId === ck.body.exam.id);
+  ok(t && t.kind === "sim" && t.score === 45 && !t.passed, "checkride appears in the student's tests (45, below pass mark)");
+  ok(s2.theory === null, "a checkride does not count as the Theory score");
+  ok(s2.sim.perExercise.S5.best === 44, "checkride flights do not change the S-exercise scores");
   console.log("ALL PASSED");
 } catch (e) {
   console.log(String(e.message || e)); console.log(log.slice(-1500)); process.exitCode = 1;

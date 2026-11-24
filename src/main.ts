@@ -85,7 +85,9 @@ lessons.onFinish = (r) => {
     const snap = engine.recorder.finish(engine.o('CRASHED') > 0.5 ? 'Crash' : 'Completed', engine.o('CRASH_CAUSE'), engine.o('FLIGHT_TIME'));
     void sendResult({ lessonId: r.id, passed: r.passed, score, time: r.time, checkride: r.checkride, reason: r.reason, objectives: r.objectives.map((o) => ({ text: o.text, done: o.done })), drone: engine.drone.name }, snap)
       .then((res) => res.ok
-        ? toast(`Sent to ${dtos!.launch.orgName}${r.passed ? ` — ${dtos!.launch.exercise?.id ?? ''} score ${res.exerciseScore ?? score}` : ' — attempt recorded'}`)
+        ? toast(dtos!.launch.checkride
+          ? `Checkride: attempt recorded${r.passed ? ` — lesson score ${score}, test score so far ${res.exerciseScore ?? '—'}` : ''}`
+          : `Sent to ${dtos!.launch.orgName}${r.passed ? ` — ${dtos!.launch.exercise?.id ?? ''} score ${res.exerciseScore ?? score}` : ' — attempt recorded'}`)
         : toast(`Could not send the result: ${res.error}`, true));
   }
   void saveProgress({ lessons: { [r.id]: { passed: r.passed, time: r.time, checkride: r.checkride, at: new Date().toISOString() } } });
@@ -236,7 +238,11 @@ function nav(screen: string, arg?: unknown, history: 'push' | 'replace' | 'none'
   hud.show(false);
   if (screen === 'dtos') {
     void dtosScreen({
-      fly: (lessonId, demo) => { const def = lessonById(lessonId); if (!def) return; demoNext = demo && def.track === 'basic'; startLesson(def, nav); },
+      fly: (lessonId, demo) => {
+        const def = lessonById(lessonId); if (!def) return;
+        settings.checkride = !!dtos?.launch.checkride; // checkride: no demo, aids off
+        demoNext = demo && !settings.checkride && def.track === 'basic'; startLesson(def, nav);
+      },
       replay: (log, launch) => void startReplay(log, launch),
     });
     return;

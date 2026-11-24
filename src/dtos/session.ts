@@ -7,7 +7,9 @@ import type { FlightLog } from '../logs/recorder';
 export interface DtosLaunch {
   user: { id: number; name: string; username: string; role: 'admin' | 'student' };
   mode: 'fly' | 'replay';
-  orgName: string; collegeName: string;
+  orgName: string; collegeName: string; lang?: 'en' | 'hi';
+  /** set when this flight is part of a live simulator checkride (test) started by the instructor */
+  checkride: { examId: number; title: string; endsAt: string } | null;
   exercise: { id: string; title: string; objective: string } | null;
   lessonId: string | null;
   attempt: { id: number; lessonId: string; lessonTitle: string; exerciseId: string; passed: boolean; score: number; at: string; student: { name: string; username: string } | null } | null;
@@ -20,10 +22,11 @@ export let dtos: { token: string; launch: DtosLaunch } | null = null;
 export function captureToken(): string | null {
   const u = new URL(location.href);
   const t = u.searchParams.get('t');
-  if (u.pathname === '/dtos' && t && /^[A-Za-z0-9_-]{20,64}$/.test(t)) {
-    try { sessionStorage.setItem(KEY, t); } catch { /* private mode */ }
-    window.history.replaceState(null, '', '/dtos');
-    return t;
+  // a link copied by hand may carry stray characters (spaces, a trailing dot or letter): keep the token part
+  const m = t ? /[A-Za-z0-9_-]{32}/.exec(t) : null;
+  if (u.pathname === '/dtos' && m) {
+    try { sessionStorage.setItem(KEY, m[0]); } catch { /* private mode */ }
+    return m[0];
   }
   try { return sessionStorage.getItem(KEY); } catch { return null; }
 }
@@ -33,8 +36,11 @@ export async function resolveLaunch(): Promise<DtosLaunch | null> {
   if (!t) return null;
   const r = await fetch(`/api/dtos/launch?t=${encodeURIComponent(t)}`, { cache: 'no-store' });
   const j = await r.json().catch(() => ({ error: 'bad response' }));
-  if (!r.ok) { try { sessionStorage.removeItem(KEY); } catch { /* ignore */ } throw new Error(j.error || 'Launch failed'); }
+  if (!r.ok) throw Object.assign(new Error(j.error || 'Launch failed'), { status: r.status });
   dtos = { token: t, launch: j as DtosLaunch };
+  if (dtos.launch.lang === 'hi') (await import('./hi')).startHindi();
+  // only now hide the token from the address bar (a failed first load can simply be retried)
+  if (location.search) window.history.replaceState(null, '', '/dtos');
   return dtos.launch;
 }
 
